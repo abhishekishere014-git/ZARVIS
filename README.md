@@ -4,6 +4,15 @@ JARVIS is a long-term, modular AI desktop assistant platform combining conversat
 
 ---
 
+## Engineering Discipline & Governance
+
+JARVIS is built under strict **Software Development Lifecycle (SDLC) governance**:
+> **"Requirements first. Design second. Code third. Verification always."**
+
+Every phase adheres to the **10 Mandatory Quality Gates** codified in [ENGINEERING_STANDARDS.md](file:///c:/ZARVIS/docs/ENGINEERING_STANDARDS.md). Code is never assumed correct without automated verification, security audits, and real runtime execution.
+
+---
+
 ## Architecture Overview
 
 JARVIS is built on a **Hybrid Architecture**:
