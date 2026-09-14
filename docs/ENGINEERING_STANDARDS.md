@@ -80,6 +80,11 @@ A phase achieves **ACCEPTANCE** only when all 10 gates pass verified validation:
 * All network listeners default to loopback (`127.0.0.1` / `localhost`). Binding to `0.0.0.0` is blocked at the schema validation level.
 * Credentials and keys must reside strictly in the OS Credential Vault (`keyring`) and never travel over network IPC or touch frontend state.
 
+### 4. Mandatory Git Commit & Remote GitHub Push
+* Every completed phase or milestone MUST be committed with a descriptive conventional commit message.
+* Immediately upon completing phase verification, the code must be pushed to remote GitHub (`git push origin master` and `git push origin master:main`).
+* No phase is marked completed in local isolation without synchronizing to the remote repository.
+
 ---
 
 ## 4. Phase Acceptance Audit Matrix
