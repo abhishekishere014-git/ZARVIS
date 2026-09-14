@@ -63,3 +63,19 @@ JARVIS is engineered as a **hybrid multi-runtime platform**, assigning computati
 2. **Secret Isolation:** Provider credentials (OpenAI, Anthropic, Gemini, etc.) reside in the host OS credential manager via `keyring`. They are never passed over WebSocket IPC or rendered into client-side UI states.
 3. **Fault Isolation:** The asynchronous event bus executes subscribers inside individual supervised tasks. A crash or unhandled exception in one listener does not destabilize the bus or other subscribers.
 4. **Clean Teardown:** Both runtimes support structured graceful shutdowns, draining in-flight requests and event dispatches before process termination.
+5. **Sandboxed Tool Execution Boundary:** All tool execution is mediated by `ToolPolicyEngine`, enforcing permission checks, risk assessment, and workspace confinement via `FileSystemSandbox`. AI output is treated as untrusted input; arbitrary shell execution (`shell=True`, `eval`, `exec`) is strictly prohibited.
+
+---
+
+## 4. Subsystems
+
+### AI Provider Layer (`jarvis.ai`)
+* Model-agnostic abstraction for OpenAI, Anthropic, Gemini, and Ollama.
+* Capability-based routing, retries with jittered exponential backoff, and fallback chains.
+
+### Sandboxed Tool Registry & Office Generation (`jarvis.tools`)
+* Automated schema generation from typed Python functions using `@tool`.
+* Strict filesystem confinement rooted in `data/workspace/`.
+* Native office generation suite: DOCX (`python-docx`), XLSX (`openpyxl`), PPTX (`python-pptx`), PDF (`reportlab`) with post-generation artifact verification.
+* Structured, secret-scrubbed audit logging and lifecycle event publishing.
+

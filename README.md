@@ -128,7 +128,7 @@ WebSocket gateway: `ws://127.0.0.1:3000/ws`
 * [x] **Phase 01:** Architecture Audit & Multi-Repository Analysis
 * [x] **Phase 02:** Hybrid Core Foundation (Python Core, Node Gateway, Shared Protocol)
 * [x] **Phase 03:** Model-Agnostic AI Provider Layer (OpenAI, Anthropic, Gemini, Ollama, Routing & Fallbacks)
-* [ ] **Phase 04:** Sandboxed Tool Registry & Native Office Generation Suite
+* [x] **Phase 04:** Sandboxed Tool Registry & Native Office Generation Suite (DOCX, XLSX, PPTX, PDF)
 * [ ] **Phase 05:** Autonomous Agent Runtime (Planner $\to$ Executor $\to$ Verifier)
 * [ ] **Phase 06:** Tri-Tier Memory Engine (Sliding Window + SQLite + `sqlite-vec`)
 * [ ] **Phase 07:** Voice Pipeline (Vosk Fast-Path + Faster-Whisper + Kokoro ONNX)
@@ -157,4 +157,25 @@ The AI Provider Layer (`services/python-core/jarvis/ai/`) provides a model-agnos
   * `RetryPolicy`: exponential backoff with full jitter for rate limits (429) and network timeouts.
   * Fallback chains: seamless handoff to alternative models or local Ollama on cloud failure.
 * **Secret Management:** Seamlessly pulls credentials from `SecretVault` (Windows Credential Manager via `keyring`) or environment variables.
+
+---
+
+## Phase 04: Sandboxed Tool Registry & Native Office Generation Suite
+
+The Tool Subsystem (`services/python-core/jarvis/tools/`) provides a supervised, permission-governed, and sandboxed execution engine for tools invoked by autonomous agents and AI models.
+
+### Key Capabilities
+* **Untrusted Model Output:** AI output is treated strictly as intent. Direct shell execution (`shell=True`, `eval()`, `exec()`) is completely forbidden.
+* **Automatic Schema Introspection:** `@tool` decorator inspects typed Python functions, parameter defaults, and docstrings to automatically generate JSON Schema definitions.
+* **Granular Permission & Risk Model:** Enforces `READ`, `WRITE`, `EXECUTE`, `NETWORK`, `SYSTEM` permissions and `LOW`, `MEDIUM`, `HIGH`, `CRITICAL` risk tiers with approval workflows (`AUTO_APPROVE`, `USER_APPROVAL`, `ALWAYS_DENY`).
+* **FileSystem Sandbox:** Confinement strictly inside `data/workspace/` with canonical path resolution, symlink escape checks, null byte blocking, and filename sanitization.
+* **Native Office Generation Suite:**
+  * **DOCX (`office.create_docx`):** Microsoft Word document creation via `python-docx` with titles, headings, bullet lists, and tables.
+  * **XLSX (`office.create_xlsx`):** Multi-sheet Excel workbook creation via `openpyxl` with styled headers and auto-adjusted columns.
+  * **PPTX (`office.create_pptx`):** PowerPoint presentation creation via `python-pptx` with title and content slide layouts.
+  * **PDF (`office.create_pdf`):** Formatted PDF report creation via `reportlab` with flowable paragraphs, tables, and page breaks.
+* **Artifact Structural Verification:** Every generator reopens and verifies the structural integrity of the generated artifact before returning success.
+* **Secret-Scrubbed Audit Logging:** Execution records and error traces are scrubbed of API keys, bearer tokens, and credentials before logging or event publishing.
+* **AI ToolCall Bridge:** Translates normalized Phase 03 `ToolCall` objects into `ToolRequest` instances and produces conforming `ChatMessage.tool` responses.
+
 

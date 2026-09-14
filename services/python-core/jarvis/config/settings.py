@@ -25,6 +25,10 @@ class JarvisSettings(BaseSettings):
     core_port: int = Field(default=8765, description="Port for core IPC")
 
     data_dir: Path = Field(default=Path("./data"), description="Directory for persistent data")
+    workspace_dir: Path = Field(
+        default=Path("./data/workspace"),
+        description="Directory for restricted sandboxed tool execution and generated files",
+    )
     vault_backend: Literal["keyring", "memory"] = Field(
         default="keyring",
         description="Backend for credential isolation (Windows Credential Manager via keyring, or memory for tests)"
