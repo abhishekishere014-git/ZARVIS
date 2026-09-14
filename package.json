@@ -16,6 +16,7 @@
     "test:python": ".venv\\Scripts\\pytest tests/python",
     "test": "npm run test:node && npm run test:python",
     "start:gateway": "npm start --workspace=@jarvis/node-gateway",
-    "start:python": ".venv\\Scripts\\python services/python-core/jarvis/__main__.py"
+    "start:python": ".venv\\Scripts\\python services/python-core/jarvis/__main__.py",
+    "preview": ".venv\\Scripts\\python scripts/preview_demo.py"
   }
 }

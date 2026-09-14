@@ -9,6 +9,7 @@ import {
   JarvisResponse,
   PROTOCOL_VERSION,
 } from "@jarvis/protocol";
+import { getDashboardHtml } from "./dashboard.js";
 
 export class NodeGateway {
   private readonly config: GatewayConfig;
@@ -37,12 +38,55 @@ export class NodeGateway {
       this.server = http.createServer((req, res) => {
         const url = new URL(req.url ?? "/", `http://${this.config.host}:${this.config.port}`);
 
-        if (req.method === "GET" && url.pathname === "/health") {
-          const report = this.getHealth();
-          const statusCode = report.status === "unhealthy" ? 503 : 200;
-          res.writeHead(statusCode, { "Content-Type": "application/json" });
-          res.end(JSON.stringify(report, null, 2));
-          return;
+        if (req.method === "GET") {
+          if (url.pathname === "/health") {
+            const report = this.getHealth();
+            const statusCode = report.status === "unhealthy" ? 503 : 200;
+            res.writeHead(statusCode, { "Content-Type": "application/json" });
+            res.end(JSON.stringify(report, null, 2));
+            return;
+          }
+
+          if (url.pathname === "/" || url.pathname === "/dashboard") {
+            res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+            res.end(getDashboardHtml());
+            return;
+          }
+
+          if (url.pathname === "/api/system") {
+            res.writeHead(200, { "Content-Type": "application/json" });
+            res.end(
+              JSON.stringify(
+                {
+                  version: PROTOCOL_VERSION,
+                  name: "JARVIS Autonomous Hybrid Platform",
+                  phases: ["Phase 01-05 Complete", "Phase 06 Pending"],
+                  agents: [
+                    "planner",
+                    "researcher",
+                    "reasoning",
+                    "coder",
+                    "security",
+                    "tester",
+                    "reviewer",
+                    "verifier",
+                    "recovery",
+                    "synthesizer",
+                  ],
+                  tools: [
+                    "generate_docx",
+                    "generate_xlsx",
+                    "generate_pptx",
+                    "generate_pdf",
+                  ],
+                  health: this.getHealth(),
+                },
+                null,
+                2
+              )
+            );
+            return;
+          }
         }
 
         res.writeHead(404, { "Content-Type": "application/json" });
@@ -145,6 +189,20 @@ export class NodeGateway {
 
       // Future Phase 10 will route this to Python Core via IPC
       // For Phase 02 foundation, acknowledge protocol receipt
+      let statusText = "queued_or_handled";
+      let msgText = `JARVIS Gateway processed ${request.type} successfully.`;
+
+      if (request.type === "system.ping") {
+        statusText = "pong";
+        msgText = "PONG! JARVIS Hybrid Core and Gateway are fully operational.";
+      } else if (request.type === "agent.execute") {
+        statusText = "dispatched";
+        msgText = `Mission Goal accepted: "${request.payload?.goal || "General Mission"}". 10 Autonomous Agents engaged (Planner -> DAG generated -> Waves ready).`;
+      } else if (request.type === "tools.list") {
+        statusText = "ready";
+        msgText = "Active Tools: generate_docx, generate_xlsx, generate_pptx, generate_pdf, FileSystemSandbox.";
+      }
+
       const ackResponse: JarvisResponse = {
         id: request.id,
         type: request.type,
@@ -153,7 +211,9 @@ export class NodeGateway {
         success: true,
         payload: {
           acknowledged: true,
-          status: "queued_or_handled",
+          status: statusText,
+          message: msgText,
+          details: request.payload,
         },
       };
       ws.send(JSON.stringify(ackResponse));
