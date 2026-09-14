@@ -129,7 +129,7 @@ WebSocket gateway: `ws://127.0.0.1:3000/ws`
 * [x] **Phase 02:** Hybrid Core Foundation (Python Core, Node Gateway, Shared Protocol)
 * [x] **Phase 03:** Model-Agnostic AI Provider Layer (OpenAI, Anthropic, Gemini, Ollama, Routing & Fallbacks)
 * [x] **Phase 04:** Sandboxed Tool Registry & Native Office Generation Suite (DOCX, XLSX, PPTX, PDF)
-* [ ] **Phase 05:** Autonomous Agent Runtime (Planner $\to$ Executor $\to$ Verifier)
+* [x] **Phase 05:** Autonomous Multi-Agent Runtime & Orchestration (Planner $\to$ Executor $\to$ Verifier)
 * [ ] **Phase 06:** Tri-Tier Memory Engine (Sliding Window + SQLite + `sqlite-vec`)
 * [ ] **Phase 07:** Voice Pipeline (Vosk Fast-Path + Faster-Whisper + Kokoro ONNX)
 * [ ] **Phase 08:** OS Automation (MSS Screen Capture, Win32 Hooks)
@@ -177,5 +177,31 @@ The Tool Subsystem (`services/python-core/jarvis/tools/`) provides a supervised,
 * **Artifact Structural Verification:** Every generator reopens and verifies the structural integrity of the generated artifact before returning success.
 * **Secret-Scrubbed Audit Logging:** Execution records and error traces are scrubbed of API keys, bearer tokens, and credentials before logging or event publishing.
 * **AI ToolCall Bridge:** Translates normalized Phase 03 `ToolCall` objects into `ToolRequest` instances and produces conforming `ChatMessage.tool` responses.
+
+---
+
+## Phase 05: Autonomous Multi-Agent Runtime & Orchestration
+
+The Autonomous Multi-Agent Runtime (`services/python-core/jarvis/agents/`) provides a supervised, bounded state machine for decomposing complex user goals into DAG execution plans, delegating to specialized agents, coordinating tools through Phase 04, independently verifying outputs, and synthesizing a single authoritative answer.
+
+### Key Capabilities
+* **Master Orchestrator State Machine:** Strict lifecycle (`IDLE` $\to$ `PLANNING` $\to$ `READY` $\to$ `RUNNING` $\to$ `VERIFYING` $\to$ `COMPLETED`).
+* **DAG Plan Decomposition & Validation:** `PlanValidator` prevents infinite loops, duplicate tasks, missing dependencies, and enforces cycle detection via Kahn's algorithm before execution.
+* **Specialized Agent Roles (10 Built-in Agents):**
+  * `PlannerAgent`: Goal decomposition into concurrent DAG waves.
+  * `ResearchAgent`: Information gathering and structured evidence formulation.
+  * `ReasoningAgent`: Logical trade-off evaluation and deduction.
+  * `CodingAgent`: Code planning and coordination of Phase 04 Office generation tools.
+  * `SecurityAgent`: Pre-execution security audits, permissions, and threat modeling.
+  * `TestingAgent`: Test strategy, validation modes, and regression analysis.
+  * `ReviewAgent`: Quality, consistency, and constraint audits.
+  * `VerifierAgent`: Independent verification of artifacts, tool statuses, and observations.
+  * `RecoveryAgent`: Failure classification and bounded retry/replan strategies.
+  * `SynthesisAgent`: Compiles intermediate task outputs into a cohesive narrative.
+* **Evidence-Based Verification:** Tasks are verified through physical artifact inspection (existence, non-zero bytes, structure) and tool result verification rather than blind trust.
+* **Bounded Failure Recovery:** Automatic step retries (`max_step_retries=2`) and replans (`max_replans=2`) prevent infinite execution loops.
+* **Checkpointing & Lifecycle Control:** Lightweight run serialization (`data/checkpoints/`) supporting `pause_run()`, `resume_run()`, and `cancel_run()`.
+* **Single Authoritative JARVIS Response:** `FinalSynthesizer` consolidates all verified results, task metrics, and artifact paths into one clean response, hiding unnecessary internal chain-of-thought.
+
 
 

@@ -79,3 +79,11 @@ JARVIS is engineered as a **hybrid multi-runtime platform**, assigning computati
 * Native office generation suite: DOCX (`python-docx`), XLSX (`openpyxl`), PPTX (`python-pptx`), PDF (`reportlab`) with post-generation artifact verification.
 * Structured, secret-scrubbed audit logging and lifecycle event publishing.
 
+### Autonomous Multi-Agent Runtime & Orchestration (`jarvis.agents`)
+* Master orchestrator with DAG-based plan decomposition, Kahn's algorithm cycle detection, and wave-based execution.
+* 10 specialized built-in agents (Planner, Research, Reasoning, Coding, Security, Testing, Review, Verifier, Recovery, Synthesis).
+* Evidence-based verification inspecting physical artifacts and tool results.
+* Bounded recovery engine managing retries and replans without infinite loops.
+* Single coherent answer synthesis delivering verified responses to users.
+
+
