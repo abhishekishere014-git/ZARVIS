@@ -44,6 +44,29 @@ class JarvisSettings(BaseSettings):
     memory_top_k: int = Field(default=5, description="Default top-K memories retrieved")
     memory_embedding_provider: str = Field(default="hash", description="Embedding provider: 'hash', 'mock', 'openai'")
 
+    # Voice Pipeline Configuration (Phase 07)
+    voice_enabled: bool = Field(default=True, description="Enable voice & audio pipeline")
+    voice_sample_rate: int = Field(default=16000, description="Audio sample rate in Hz (16000 standard for speech)")
+    voice_channels: int = Field(default=1, description="Audio channels (1 for mono)")
+    voice_sample_width: int = Field(default=2, description="Audio sample width in bytes (2 for 16-bit PCM)")
+    voice_stt_provider: str = Field(default="router", description="STT provider: 'router', 'vosk', 'whisper', 'mock'")
+    voice_vosk_model_path: Path | None = Field(default=None, description="Path to local Vosk model directory")
+    voice_whisper_model: str = Field(default="base", description="Faster-Whisper model name/size")
+    voice_whisper_device: str = Field(default="cpu", description="Whisper compute device: 'cpu' or 'cuda'")
+    voice_whisper_compute_type: str = Field(default="int8", description="Whisper quantization: 'int8', 'float16', 'float32'")
+    voice_vad_provider: str = Field(default="energy", description="VAD provider: 'energy', 'mock'")
+    voice_vad_energy_threshold: float = Field(default=500.0, description="RMS energy threshold for speech activity")
+    voice_vad_silence_timeout_sec: float = Field(default=1.2, description="Seconds of silence to detect end of speech")
+    voice_vad_min_speech_sec: float = Field(default=0.3, description="Minimum duration of speech to process")
+    voice_max_recording_duration_sec: float = Field(default=30.0, description="Maximum recording duration in seconds")
+    voice_max_audio_size_bytes: int = Field(default=25 * 1024 * 1024, description="Maximum audio payload size in bytes (25MB)")
+    voice_tts_provider: str = Field(default="kokoro", description="TTS provider: 'kokoro', 'mock'")
+    voice_kokoro_model_path: Path | None = Field(default=None, description="Path to Kokoro ONNX model file")
+    voice_tts_voice: str = Field(default="af_heart", description="TTS voice identifier")
+    voice_tts_speed: float = Field(default=1.0, description="TTS playback speed multiplier")
+    voice_temp_dir: Path | None = Field(default=None, description="Temporary audio directory (defaults to workspace/temp/audio)")
+
+
     @property
     def is_production(self) -> bool:
         return self.env == "production"

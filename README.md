@@ -131,7 +131,7 @@ WebSocket gateway: `ws://127.0.0.1:3000/ws`
 * [x] **Phase 04:** Sandboxed Tool Registry & Native Office Generation Suite (DOCX, XLSX, PPTX, PDF)
 * [x] **Phase 05:** Autonomous Multi-Agent Runtime & Orchestration (Planner $\to$ Executor $\to$ Verifier)
 * [x] **Phase 06:** Tri-Tier Memory Engine (Sliding Window + SQLite + `sqlite-vec`)
-* [ ] **Phase 07:** Voice Pipeline (Vosk Fast-Path + Faster-Whisper + Kokoro ONNX)
+* [x] **Phase 07:** Voice Pipeline (Vosk Fast-Path + Faster-Whisper + Kokoro ONNX)
 * [ ] **Phase 08:** OS Automation (MSS Screen Capture, Win32 Hooks)
 * [ ] **Phase 09:** Background Task & Cron Automation Engine
 * [ ] **Phase 10:** Headless IPC Bridge (Python <-> Node Gateway link)
@@ -237,6 +237,38 @@ The Tri-Tier Memory Engine (`services/python-core/jarvis/memory/`) provides a mu
 * **Multi-Agent Runtime Integration:**
   * Native memory access in `AgentContext` and `AgentExecutor` with automatic memory retrieval during execution.
   * Built-in agents (`ResearchAgent`, `CodingAgent`, `VerifierAgent`) leverage memory for long-term consistency, fact retention, and artifact tracking.
+
+---
+
+## Phase 07: Voice & Audio Pipeline
+
+The Voice & Audio Pipeline (`services/python-core/jarvis/voice/`) turns ZARVIS into a voice-first assistant through a modular, hardware-agnostic audio processing loop integrated with the multi-agent runtime, memory, and sandboxed tools.
+
+### Key Capabilities
+* **Hardware-Agnostic Audio Abstraction:**
+  * Abstract interfaces for capture (`BaseAudioCapture`) and playback (`BaseAudioPlayback`) with PCM 16-bit 16kHz standard contracts.
+  * Virtual memory-backed audio drivers (`VirtualAudioCapture`, `VirtualAudioPlayback`) guaranteeing complete testability without physical microphones or speakers.
+* **Voice Activity Detection (VAD):**
+  * Pure standard-library RMS energy calculation with adaptive background noise floor estimation and hangover frame bridging.
+  * Utterance boundary segmentation (`VADSegmenter`) enforcing minimum speech duration (0.3s) and hard recording caps (30s) to prevent infinite listening loops.
+* **Intelligent STT Routing & Escalation:**
+  * **Vosk Fast-Path:** Instant local offline speech recognition for short commands (< 5s) with sub-100ms response times.
+  * **Faster-Whisper Escalation:** High-accuracy multilingual model (English, Hindi, Hinglish) invoked for complex utterances, low fast-path confidence (< 0.75), or on fast-path failures.
+  * **Bounded Fallback:** Deterministic provider handoff preventing unbounded retry loops.
+* **State Machine & Barge-In:**
+  * Explicit conversation states (`IDLE`, `LISTENING`, `PROCESSING`, `SPEAKING`, `INTERRUPTED`, `ERROR`).
+  * Barge-in interruption: detecting user speech during TTS playback cancels active audio playback tasks immediately with zero orphaned background tasks.
+* **Local Neural TTS:**
+  * Offline speech synthesis via Kokoro ONNX with configurable voices (`af_heart`) and variable speeds.
+  * Streaming sentence chunking allowing incremental synthesis.
+* **Agent & Memory Integration:**
+  * Normalizes transcribed utterances into typed `VoiceRequest` objects delivered to Phase 05 `AgentOrchestrator`.
+  * Preserves Phase 06 memory boundaries and security rules with zero raw microphone persistence by default.
+* **Audio Security & Sandbox:**
+  * Enforces maximum duration (30s) and payload size (25MB) limits.
+  * Confines temporary audio files strictly within `data/workspace/temp/audio/` with path traversal defense and symlink blocking.
+  * Scrubs telemetry payloads to guarantee raw audio bytes and API credentials are never logged or emitted over the event bus.
+
 
 
 

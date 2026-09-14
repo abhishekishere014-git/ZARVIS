@@ -94,5 +94,14 @@ JARVIS is engineered as a **hybrid multi-runtime platform**, assigning computati
 * **Hybrid 6-Factor Ranking:** Deterministic retrieval ranker combining semantic similarity, temporal recency decay, importance, confidence, scope matching, and task affinity.
 * **Multi-Agent Memory Integration:** Native hooks into `AgentContext` and `AgentExecutor` for persistent memory access and context enrichment across agent task waves.
 
+### Voice & Audio Pipeline (`jarvis.voice`)
+* **Hardware-Agnostic Audio Abstraction:** Provider-agnostic capture and playback protocols with virtual memory-backed streams for deterministic CI/CD testing.
+* **Voice Activity Detection (VAD):** Pure standard-library RMS energy calculation with adaptive background noise estimation, hangover frames, and utterance segmentation.
+* **Intelligent STT Routing:** Vosk fast-path for short commands (< 5s) escalating to Faster-Whisper for complex utterances, low confidence (< 0.75), or multilingual speech (English, Hindi, Hinglish).
+* **Deterministic State Machine:** Strict lifecycle enforcement (`IDLE` -> `LISTENING` -> `PROCESSING` -> `SPEAKING` -> `IDLE`) with barge-in interruption support (`SPEAKING` -> `INTERRUPTED`).
+* **Offline Neural TTS:** Local Kokoro ONNX speech synthesis with streaming sentence chunk generation and configurable voices.
+* **Unified Agent & Memory Handoff:** Voice requests invoke Phase 05 `AgentOrchestrator` directly, leveraging Phase 06 `MemoryManager` without persisting raw audio.
+
+
 
 
