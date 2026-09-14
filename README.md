@@ -127,7 +127,7 @@ WebSocket gateway: `ws://127.0.0.1:3000/ws`
 
 * [x] **Phase 01:** Architecture Audit & Multi-Repository Analysis
 * [x] **Phase 02:** Hybrid Core Foundation (Python Core, Node Gateway, Shared Protocol)
-* [ ] **Phase 03:** Model-Agnostic AI Provider Layer (OpenAI, Anthropic, Gemini, Ollama)
+* [x] **Phase 03:** Model-Agnostic AI Provider Layer (OpenAI, Anthropic, Gemini, Ollama, Routing & Fallbacks)
 * [ ] **Phase 04:** Sandboxed Tool Registry & Native Office Generation Suite
 * [ ] **Phase 05:** Autonomous Agent Runtime (Planner $\to$ Executor $\to$ Verifier)
 * [ ] **Phase 06:** Tri-Tier Memory Engine (Sliding Window + SQLite + `sqlite-vec`)
@@ -137,3 +137,24 @@ WebSocket gateway: `ws://127.0.0.1:3000/ws`
 * [ ] **Phase 10:** Headless IPC Bridge (Python $\leftrightarrow$ Node Gateway link)
 * [ ] **Phase 11:** Desktop Client & System Tray UI
 * [ ] **Phase 12:** Hardening, E2E Testing & Release
+
+---
+
+## Phase 03: AI Provider Layer
+
+The AI Provider Layer (`services/python-core/jarvis/ai/`) provides a model-agnostic, zero-leakage LLM abstraction supporting dynamic provider switching, capability routing, automatic retries with jittered exponential backoff, and seamless fallback chains.
+
+### Key Capabilities
+* **Universal Normalized Contracts:** `AIProvider` protocol with typed `ChatMessage`, `LLMRequest`, `LLMResponse`, `AIStreamEvent`, and `ToolDefinition`.
+* **Zero Vendor Leakage:** Native async HTTP adapters (`httpx.AsyncClient`) avoiding heavy proprietary SDKs.
+* **Supported Adapters:**
+  * **OpenAI Adapter:** `gpt-4o`, `gpt-4o-mini`, `o1`, `o3-mini` (SSE streaming + function calling).
+  * **Anthropic Adapter:** `claude-3-5-sonnet-20241022`, `claude-3-haiku` (Messages API streaming + tool use blocks).
+  * **Google Gemini Adapter:** `gemini-1.5-pro`, `gemini-1.5-flash`, `gemini-2.0-flash` (v1beta REST API with tool declarations).
+  * **Ollama Adapter:** Local offline execution (`llama3`, `mistral`, `qwen2.5`) with NDJSON streaming and tag discovery.
+* **AIRouter & Resiliency:**
+  * Capability checking (e.g. rejects tools or vision if provider lacks support before network egress).
+  * `RetryPolicy`: exponential backoff with full jitter for rate limits (429) and network timeouts.
+  * Fallback chains: seamless handoff to alternative models or local Ollama on cloud failure.
+* **Secret Management:** Seamlessly pulls credentials from `SecretVault` (Windows Credential Manager via `keyring`) or environment variables.
+
