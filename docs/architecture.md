@@ -102,6 +102,11 @@ JARVIS is engineered as a **hybrid multi-runtime platform**, assigning computati
 * **Offline Neural TTS:** Local Kokoro ONNX speech synthesis with streaming sentence chunk generation and configurable voices.
 * **Unified Agent & Memory Handoff:** Voice requests invoke Phase 05 `AgentOrchestrator` directly, leveraging Phase 06 `MemoryManager` without persisting raw audio.
 
-
-
-
+### Controlled Windows OS Automation (`jarvis.os`)
+* **Zero Arbitrary Execution:** Completely eliminates `shell=True`, `eval()`, `exec()`, `os.system()`, or raw shell injections. All capabilities registered as typed tools with Phase 04 `ToolRegistry`.
+* **Provider Abstraction:** Decoupled `OSProvider` Protocol with `WindowsOSProvider` (Win32 ctypes + Pillow) and `MockOSProvider` (virtual desktop canvas for headless deterministic CI).
+* **Screen & Monitor Intelligence:** Bounded screen capture to `data/workspace/temp/screens/` with downscaling, format selection, and monitor geometry enumeration.
+* **Controlled Mouse & Keyboard Subsystems:** Validated cursor movement across `SCREEN`, `MONITOR`, and `WINDOW` frames. Destructive clicks and sensitive text typing gated on explicit user authorization. Key combinations bounded to `SUPPORTED_KEYS`.
+* **Deterministic Window Management:** Window enumeration and query resolution with `WindowAmbiguityError` guardrails to prevent misdirected inputs.
+* **Privacy-Preserving Clipboard & Telemetry:** Read/write/clear clipboard bounded by length limits without echoing written content; automated secret redaction and raw image stripping from `AsyncEventBus` event streams.
+* **Post-Action State Verification:** `OSActionVerifier` evaluates physical cursor coordinates, focused window handles, and clipboard content to guarantee execution efficacy.

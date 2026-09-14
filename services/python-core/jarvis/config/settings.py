@@ -66,6 +66,23 @@ class JarvisSettings(BaseSettings):
     voice_tts_speed: float = Field(default=1.0, description="TTS playback speed multiplier")
     voice_temp_dir: Path | None = Field(default=None, description="Temporary audio directory (defaults to workspace/temp/audio)")
 
+    # OS Automation Configuration (Phase 08)
+    os_automation_enabled: bool = Field(default=True, description="Enable controlled OS automation subsystem")
+    os_automation_max_actions_per_turn: int = Field(default=15, description="Maximum OS actions per agent turn")
+    os_action_timeout_sec: float = Field(default=10.0, description="Timeout for individual OS actions in seconds")
+    screen_capture_enabled: bool = Field(default=True, description="Enable screen capture capability")
+    screen_max_width: int = Field(default=3840, description="Maximum supported screenshot width")
+    screen_max_height: int = Field(default=2160, description="Maximum supported screenshot height")
+    screen_max_bytes: int = Field(default=10 * 1024 * 1024, description="Maximum screenshot size in bytes (10MB)")
+    screen_temp_dir: Path | None = Field(default=None, description="Temporary screen directory (defaults to workspace/temp/screens)")
+    mouse_enabled: bool = Field(default=True, description="Enable mouse movement and clicking")
+    keyboard_enabled: bool = Field(default=True, description="Enable keyboard typing and hotkeys")
+    keyboard_max_type_length: int = Field(default=500, description="Maximum characters typed per action")
+    clipboard_enabled: bool = Field(default=True, description="Enable clipboard read/write/clear")
+    clipboard_max_chars: int = Field(default=50000, description="Maximum clipboard characters allowed")
+    window_management_enabled: bool = Field(default=True, description="Enable window discovery and focus/state control")
+    require_approval_for_destructive_clicks: bool = Field(default=True, description="Require user approval for high-risk clicks")
+
 
     @property
     def is_production(self) -> bool:

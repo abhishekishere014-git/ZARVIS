@@ -268,8 +268,41 @@ The Voice & Audio Pipeline (`services/python-core/jarvis/voice/`) turns ZARVIS i
   * Enforces maximum duration (30s) and payload size (25MB) limits.
   * Confines temporary audio files strictly within `data/workspace/temp/audio/` with path traversal defense and symlink blocking.
   * Scrubs telemetry payloads to guarantee raw audio bytes and API credentials are never logged or emitted over the event bus.
+---
 
+## Phase 08: Controlled Windows OS Automation Layer
 
+The Windows OS Automation subsystem (`services/python-core/jarvis/os/`) enables safe, auditable, provider-agnostic computer interaction across display capture, monitor geometry, mouse, keyboard, window lifecycle, system clipboard, and host telemetry.
 
+### Key Capabilities
+* **Zero Arbitrary Execution Guarantee:**
+  * No `shell=True`, `eval()`, `exec()`, `os.system()`, or raw PowerShell/CMD execution.
+  * Every OS capability is registered as a strongly-typed tool in Phase 04 `ToolRegistry` governed by `ToolPolicyEngine`.
+* **Hardware & OS Provider Abstraction:**
+  * `OSProvider` Protocol contract decoupling high-level automation from operating system drivers.
+  * `WindowsOSProvider`: Native Win32 driver leveraging `ctypes` (`user32.dll`, `gdi32.dll`, `kernel32.dll`) and `Pillow`. Zero external executable dependencies.
+  * `MockOSProvider`: Virtual desktop canvas and input recorder providing deterministic, headless continuous integration without physical displays or input hardware.
+* **Bounded Screen Capture & Display Awareness:**
+  * Multimonitor discovery with coordinates, dimensions, primary flags, and DPI scaling factors.
+  * Captures full displays or sub-regions into temporary sandboxed storage (`data/workspace/temp/screens/`) with path traversal prevention.
+* **Controlled Mouse & Keyboard Subsystems:**
+  * Relative and absolute cursor movement across `SCREEN`, `MONITOR`, and `WINDOW` coordinate frames with boundary validation against desktop limits.
+  * Single, double, and right click execution; mouse wheel delta scrolling.
+  * Destructive clicks (`is_destructive=True`) require explicit user authorization (`ApprovalMode.USER_APPROVAL`).
+  * Unicode text typing with per-character delay pacing; allowlisted discrete key presses (`SUPPORTED_KEYS`).
+  * Sensitive text typing (credentials, passwords, API tokens) automatically flagged and gated on user approval.
+* **Deterministic Window Management & Ambiguity Guardrails:**
+  * Enumerates top-level visible windows with titles, process IDs, and bounding geometry.
+  * Raises `WindowAmbiguityError` when title/process queries match multiple candidates, preventing misdirected keystrokes or clicks.
+  * Programmatic state operations: `FOCUS`, `MINIMIZE`, `MAXIMIZE`, `RESTORE`.
+* **Privacy-Safe Clipboard & Telemetry:**
+  * Plain text read, write, and clear operations bounded by length limits.
+  * Strict privacy: clipboard strings and typed secrets are never echoed back in execution results and are automatically scrubbed from `JarvisEvent`s on `AsyncEventBus`.
+* **Post-Action State Verification:**
+  * `OSActionVerifier` automatically checks outcome states (cursor position, focused window handle, clipboard content) to confirm action success.
+* **Full Ecosystem Integration:**
+  * Seamlessly accessible to Phase 05 `AgentOrchestrator` via `ToolExecutor` / `AIToolBridge`.
+  * Contextual OS state logged into Phase 06 `WorkingBuffer`.
+  * Triggerable from Phase 07 Voice pipelines.
 
 
