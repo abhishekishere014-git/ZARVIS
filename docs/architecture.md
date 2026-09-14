@@ -110,3 +110,12 @@ JARVIS is engineered as a **hybrid multi-runtime platform**, assigning computati
 * **Deterministic Window Management:** Window enumeration and query resolution with `WindowAmbiguityError` guardrails to prevent misdirected inputs.
 * **Privacy-Preserving Clipboard & Telemetry:** Read/write/clear clipboard bounded by length limits without echoing written content; automated secret redaction and raw image stripping from `AsyncEventBus` event streams.
 * **Post-Action State Verification:** `OSActionVerifier` evaluates physical cursor coordinates, focused window handles, and clipboard content to guarantee execution efficacy.
+
+### Vision, Screen Understanding & Visual Grounding (`jarvis.vision`)
+* **Perception-Action Separation:** Provides non-intrusive visual perception, element detection, OCR extraction, and coordinate grounding without direct execution privileges. All physical actions flow through Phase 08 tools.
+* **Provider Abstraction:** Protocol-based `VisionProvider` with `MockVisionProvider` generating realistic multi-monitor desktop environments for headless CI.
+* **Hierarchical Perception Pipeline:** `ScreenAnalyzer` associates visual elements with enclosing semantic `ScreenRegion` instances, extracts labels/placeholders, and detects interactive controls.
+* **Confidence & Ambiguity Protection:** Three-tier confidence ratings (`HIGH`, `MEDIUM`, `LOW`). `TargetAmbiguityError` blocks blind clicks when candidates have score deltas $\le 0.08$.
+* **Observation Staleness Guard:** Configurable observation TTL (default 15.0s); interactions against outdated snapshots raise `StaleObservationError`.
+* **Privacy & Boundary Verification:** Automated credential/password field detection and redaction from telemetry; coordinate boundaries validated against desktop dimensions.
+* **ToolRegistry Integration:** Registers `vision.screen.analyze`, `vision.element.find`, and `vision.target.resolve` for seamless multi-agent and voice invocation.

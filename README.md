@@ -132,8 +132,8 @@ WebSocket gateway: `ws://127.0.0.1:3000/ws`
 * [x] **Phase 05:** Autonomous Multi-Agent Runtime & Orchestration (Planner $\to$ Executor $\to$ Verifier)
 * [x] **Phase 06:** Tri-Tier Memory Engine (Sliding Window + SQLite + `sqlite-vec`)
 * [x] **Phase 07:** Voice Pipeline (Vosk Fast-Path + Faster-Whisper + Kokoro ONNX)
-* [ ] **Phase 08:** OS Automation (MSS Screen Capture, Win32 Hooks)
-* [ ] **Phase 09:** Background Task & Cron Automation Engine
+* [x] **Phase 08:** Controlled Windows OS Automation & Computer Interaction Layer
+* [x] **Phase 09:** Vision, Screen Understanding & Visual Grounding Layer
 * [ ] **Phase 10:** Headless IPC Bridge (Python <-> Node Gateway link)
 * [ ] **Phase 11:** Desktop Client & System Tray UI
 * [ ] **Phase 12:** Hardening, E2E Testing & Release

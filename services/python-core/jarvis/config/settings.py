@@ -83,6 +83,17 @@ class JarvisSettings(BaseSettings):
     window_management_enabled: bool = Field(default=True, description="Enable window discovery and focus/state control")
     require_approval_for_destructive_clicks: bool = Field(default=True, description="Require user approval for high-risk clicks")
 
+    # Vision & Visual Grounding Configuration (Phase 09)
+    vision_enabled: bool = Field(default=True, description="Enable vision and visual grounding subsystem")
+    vision_provider: str = Field(default="mock", description="Vision provider: 'mock', 'local_ocr', 'multimodal_ai'")
+    vision_confidence_threshold_high: float = Field(default=0.85, description="High confidence threshold for autonomous interaction")
+    vision_confidence_threshold_medium: float = Field(default=0.60, description="Medium confidence threshold")
+    vision_observation_ttl_sec: float = Field(default=15.0, description="Screen observation TTL in seconds before considered stale")
+    vision_max_elements: int = Field(default=200, description="Maximum elements extracted per screen analysis")
+    vision_downscale_width: int = Field(default=1920, description="Target width for downscaled screen perception")
+    vision_downscale_height: int = Field(default=1080, description="Target height for downscaled screen perception")
+
+
 
     @property
     def is_production(self) -> bool:
@@ -95,3 +106,17 @@ class JarvisSettings(BaseSettings):
     @property
     def is_test(self) -> bool:
         return self.env == "test"
+
+
+_settings_instance: JarvisSettings | None = None
+
+
+def get_settings() -> JarvisSettings:
+    """Returns singleton JarvisSettings instance."""
+    global _settings_instance
+    if _settings_instance is None:
+        _settings_instance = JarvisSettings()
+    return _settings_instance
+
+
+__all__ = ["JarvisSettings", "get_settings"]
