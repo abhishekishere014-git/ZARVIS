@@ -130,11 +130,11 @@ WebSocket gateway: `ws://127.0.0.1:3000/ws`
 * [x] **Phase 03:** Model-Agnostic AI Provider Layer (OpenAI, Anthropic, Gemini, Ollama, Routing & Fallbacks)
 * [x] **Phase 04:** Sandboxed Tool Registry & Native Office Generation Suite (DOCX, XLSX, PPTX, PDF)
 * [x] **Phase 05:** Autonomous Multi-Agent Runtime & Orchestration (Planner $\to$ Executor $\to$ Verifier)
-* [ ] **Phase 06:** Tri-Tier Memory Engine (Sliding Window + SQLite + `sqlite-vec`)
+* [x] **Phase 06:** Tri-Tier Memory Engine (Sliding Window + SQLite + `sqlite-vec`)
 * [ ] **Phase 07:** Voice Pipeline (Vosk Fast-Path + Faster-Whisper + Kokoro ONNX)
 * [ ] **Phase 08:** OS Automation (MSS Screen Capture, Win32 Hooks)
 * [ ] **Phase 09:** Background Task & Cron Automation Engine
-* [ ] **Phase 10:** Headless IPC Bridge (Python $\leftrightarrow$ Node Gateway link)
+* [ ] **Phase 10:** Headless IPC Bridge (Python <-> Node Gateway link)
 * [ ] **Phase 11:** Desktop Client & System Tray UI
 * [ ] **Phase 12:** Hardening, E2E Testing & Release
 
@@ -185,7 +185,7 @@ The Tool Subsystem (`services/python-core/jarvis/tools/`) provides a supervised,
 The Autonomous Multi-Agent Runtime (`services/python-core/jarvis/agents/`) provides a supervised, bounded state machine for decomposing complex user goals into DAG execution plans, delegating to specialized agents, coordinating tools through Phase 04, independently verifying outputs, and synthesizing a single authoritative answer.
 
 ### Key Capabilities
-* **Master Orchestrator State Machine:** Strict lifecycle (`IDLE` $\to$ `PLANNING` $\to$ `READY` $\to$ `RUNNING` $\to$ `VERIFYING` $\to$ `COMPLETED`).
+* **Master Orchestrator State Machine:** Strict lifecycle (`IDLE` -> `PLANNING` -> `READY` -> `RUNNING` -> `VERIFYING` -> `COMPLETED`).
 * **DAG Plan Decomposition & Validation:** `PlanValidator` prevents infinite loops, duplicate tasks, missing dependencies, and enforces cycle detection via Kahn's algorithm before execution.
 * **Specialized Agent Roles (10 Built-in Agents):**
   * `PlannerAgent`: Goal decomposition into concurrent DAG waves.
@@ -202,6 +202,42 @@ The Autonomous Multi-Agent Runtime (`services/python-core/jarvis/agents/`) provi
 * **Bounded Failure Recovery:** Automatic step retries (`max_step_retries=2`) and replans (`max_replans=2`) prevent infinite execution loops.
 * **Checkpointing & Lifecycle Control:** Lightweight run serialization (`data/checkpoints/`) supporting `pause_run()`, `resume_run()`, and `cancel_run()`.
 * **Single Authoritative JARVIS Response:** `FinalSynthesizer` consolidates all verified results, task metrics, and artifact paths into one clean response, hiding unnecessary internal chain-of-thought.
+
+---
+
+## Phase 06: Tri-Tier Memory Engine
+
+The Tri-Tier Memory Engine (`services/python-core/jarvis/memory/`) provides a multi-layer, security-hardened memory system combining low-latency in-memory conversation tracking, durable relational event storage, and semantic vector retrieval.
+
+### Key Capabilities
+* **Tier 1 — Working Memory (Fast RAM Window):**
+  * Sliding message window bounded by both token budget and message count with priority-based eviction.
+  * Preserves critical system instructions and task context across evictions.
+  * Overflow summarization preserving context continuity without unbounded token growth.
+  * Memory snapshots (`MemorySnapshot`) for pause/resume state management.
+* **Tier 2 — Structured Persistent Store (SQLite WAL):**
+  * Persistent storage in `data/memory/jarvis-memory.db` configured with Write-Ahead Logging (WAL) and synchronous normal mode for high-concurrency read/write operations.
+  * Transactional migration engine (`001_initial_memory_schema`, `002_add_indexes`) with automated version tracking.
+  * Comprehensive schemas: `conversations`, `messages`, `memories`, `facts`, `preferences`, `tasks`, `artifacts`, `memory_events`, `summaries`.
+  * Deduplication and upsert semantics for user preferences and facts.
+  * Complete audit provenance tracking (`source_type`, `source_id`, `trust_level`, timestamps).
+* **Tier 3 — Semantic Vector Retrieval (`sqlite-vec` + Cosine Fallback):**
+  * Dense vector indexing with dimension verification (default 384-d).
+  * Native hardware-accelerated KNN search via `sqlite-vec` extension with automatic graceful fallback to pure-Python cosine similarity.
+  * `EmbeddingProvider` protocol with pluggable providers (`HashEmbeddingProvider` for fast local testing, mock provider for determinism).
+* **Security & Memory Guardrails:**
+  * **Recursive Secret Redaction:** Scrubbing of API keys (OpenAI, Anthropic, Gemini, HuggingFace, GitHub), Bearer tokens, passwords, and null bytes before persistence or retrieval.
+  * **Prompt Injection Defense:** Strict heuristic classifier detecting override attempts (`ignore previous instructions`, `system prompt:`, `new instructions:`).
+  * **Trust Classification:** Distinction between `USER_VERIFIED` and `MODEL_GENERATED` inputs. Suspicious or untrusted inputs are quarantined to lower trust tiers.
+  * **Passive Context Isolation:** All retrieved memories injected into agent context are explicitly framed as passive reference data, never executable instructions.
+  * **Scope Boundary Enforcement:** Strict isolation across `SESSION`, `CONVERSATION`, `USER`, `PROJECT`, and `GLOBAL` scopes. Cross-project memory retrieval is strictly prohibited.
+* **6-Factor Hybrid Ranking:**
+  * Deterministic scoring combining semantic similarity, temporal recency decay, memory importance, confidence rating, scope alignment, and task relevance:
+    $$\text{final\_score} = \frac{w_{\text{sem}} S_{\text{sem}} + w_{\text{rec}} S_{\text{rec}} + w_{\text{imp}} S_{\text{imp}} + w_{\text{conf}} S_{\text{conf}} + w_{\text{scope}} S_{\text{scope}} + w_{\text{task}} S_{\text{task}}}{\sum w}$$
+* **Multi-Agent Runtime Integration:**
+  * Native memory access in `AgentContext` and `AgentExecutor` with automatic memory retrieval during execution.
+  * Built-in agents (`ResearchAgent`, `CodingAgent`, `VerifierAgent`) leverage memory for long-term consistency, fact retention, and artifact tracking.
+
 
 
 

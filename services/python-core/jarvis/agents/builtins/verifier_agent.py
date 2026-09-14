@@ -43,6 +43,16 @@ class VerifierAgent(BaseAgent):
             evidence={"independent_check": "complete"},
         )
 
+        if context.memory:
+            try:
+                await context.memory.store(
+                    content=f"Verification confirmed for {len(prior_obs)} prior observations with {len(artifacts)} artifacts.",
+                    source="agent.verifier",
+                    task_id=context.task.id,
+                )
+            except Exception:
+                pass
+
         return AgentStepResult(
             task_id=context.task.id,
             agent_id=self.id,

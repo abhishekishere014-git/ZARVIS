@@ -46,6 +46,7 @@ class AgentOrchestrator:
         checkpoint_store: CheckpointStore,
         synthesizer: FinalSynthesizer,
         event_bus: Optional[AsyncEventBus] = None,
+        memory: Optional[Any] = None,
         max_runtime_seconds: float = 300.0,
         max_total_steps: int = 20,
     ) -> None:
@@ -58,6 +59,7 @@ class AgentOrchestrator:
         self.checkpoint_store = checkpoint_store
         self.synthesizer = synthesizer
         self.event_bus = event_bus
+        self.memory = memory
         self.max_runtime_seconds = max_runtime_seconds
         self.max_total_steps = max_total_steps
         self._active_runs: Dict[str, AgentRun] = {}

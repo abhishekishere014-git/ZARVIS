@@ -34,6 +34,16 @@ class JarvisSettings(BaseSettings):
         description="Backend for credential isolation (Windows Credential Manager via keyring, or memory for tests)"
     )
 
+    # Memory Engine Configuration (Phase 06)
+    memory_enabled: bool = Field(default=True, description="Enable tri-tier memory engine")
+    memory_db_path: Path | None = Field(default=None, description="Custom path to SQLite memory DB (defaults to data_dir/memory/jarvis-memory.db)")
+    memory_max_working_messages: int = Field(default=50, description="Max messages in working memory buffer")
+    memory_max_working_tokens: int = Field(default=8192, description="Max tokens in working memory buffer")
+    memory_retention_days: int = Field(default=90, description="Durable retention window in days")
+    memory_semantic_enabled: bool = Field(default=True, description="Enable vector semantic retrieval")
+    memory_top_k: int = Field(default=5, description="Default top-K memories retrieved")
+    memory_embedding_provider: str = Field(default="hash", description="Embedding provider: 'hash', 'mock', 'openai'")
+
     @property
     def is_production(self) -> bool:
         return self.env == "production"

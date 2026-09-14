@@ -2,7 +2,7 @@
 
 import logging
 import time
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from jarvis.agents.base import AgentContext, BaseAgent
 from jarvis.agents.models import (
     AgentObservation,
@@ -27,10 +27,12 @@ class AgentTaskExecutor:
         agent_registry: AgentRegistry,
         tool_executor: Optional[ToolExecutor] = None,
         router: Optional[AIRouter] = None,
+        memory: Optional[Any] = None,
     ) -> None:
         self.agent_registry = agent_registry
         self.tool_executor = tool_executor
         self.router = router
+        self.memory = memory
 
     async def execute_task(
         self,
@@ -72,6 +74,7 @@ class AgentTaskExecutor:
             agent_definition=agent.definition,
             router=self.router,
             tool_executor=self.tool_executor,
+            memory=self.memory,
             prior_observations=prior_observations or [],
         )
 

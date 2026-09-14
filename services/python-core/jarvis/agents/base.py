@@ -23,6 +23,7 @@ class AgentContext(BaseModel):
     agent_definition: AgentDefinition
     router: Optional[AIRouter] = None
     tool_executor: Optional[ToolExecutor] = None
+    memory: Optional[Any] = None
     prior_observations: List[AgentObservation] = Field(default_factory=list)
     metadata: Dict[str, Any] = Field(default_factory=dict)
 

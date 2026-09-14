@@ -65,6 +65,18 @@ class CodingAgent(BaseAgent):
                             observations=observations,
                         )
 
+            if context.memory and artifacts:
+                for art in artifacts:
+                    try:
+                        await context.memory.store(
+                            content=f"Created artifact: {art}",
+                            source="agent.coding",
+                            task_id=task.id,
+                            artifact_id=art,
+                        )
+                    except Exception:
+                        pass
+
             return AgentStepResult(
                 task_id=task.id,
                 agent_id=self.id,

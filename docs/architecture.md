@@ -86,4 +86,13 @@ JARVIS is engineered as a **hybrid multi-runtime platform**, assigning computati
 * Bounded recovery engine managing retries and replans without infinite loops.
 * Single coherent answer synthesis delivering verified responses to users.
 
+### Tri-Tier Memory Engine (`jarvis.memory`)
+* **Tier 1 (Working Memory):** Sliding window buffer in RAM with token and message count constraints, priority eviction, overflow summarization, and memory snapshots.
+* **Tier 2 (Structured Store):** Persistent SQLite store (`data/memory/jarvis-memory.db`) with Write-Ahead Logging (WAL), automated migration runner, indexed relational schemas (`conversations`, `messages`, `memories`, `facts`, `preferences`, `tasks`, `artifacts`, `memory_events`, `summaries`), and audit provenance.
+* **Tier 3 (Semantic Retrieval):** Hardware-accelerated KNN vector search via `sqlite-vec` (v0.1.9) with pure-Python cosine similarity fallback, pluggable `EmbeddingProvider` protocols, and dense vector index.
+* **Security & Guardrails:** Recursive secret redaction (keys, bearer tokens, passwords, null bytes), prompt injection heuristics, trust classification (`USER_VERIFIED` vs `MODEL_GENERATED`), passive reference context isolation, and strict cross-project isolation.
+* **Hybrid 6-Factor Ranking:** Deterministic retrieval ranker combining semantic similarity, temporal recency decay, importance, confidence, scope matching, and task affinity.
+* **Multi-Agent Memory Integration:** Native hooks into `AgentContext` and `AgentExecutor` for persistent memory access and context enrichment across agent task waves.
+
+
 

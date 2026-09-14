@@ -54,6 +54,16 @@ class ResearchAgent(BaseAgent):
             evidence={"topic": task_desc},
         )
 
+        if context.memory:
+            try:
+                await context.memory.store(
+                    content=findings,
+                    source="agent.research",
+                    task_id=context.task.id,
+                )
+            except Exception:
+                pass
+
         return AgentStepResult(
             task_id=context.task.id,
             agent_id=self.id,

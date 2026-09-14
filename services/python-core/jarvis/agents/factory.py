@@ -1,7 +1,7 @@
 """Factory for assembling and dependency-injecting the JARVIS Agent Runtime."""
 
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 from jarvis.agents.approval import ApprovalManager
 from jarvis.agents.builtins import register_builtin_agents
 from jarvis.agents.checkpoint import CheckpointStore
@@ -32,6 +32,7 @@ class AgentSystem:
         approval_manager: ApprovalManager,
         checkpoint_store: CheckpointStore,
         synthesizer: FinalSynthesizer,
+        memory: Optional[Any] = None,
     ) -> None:
         self.orchestrator = orchestrator
         self.registry = registry
@@ -42,6 +43,7 @@ class AgentSystem:
         self.approval_manager = approval_manager
         self.checkpoint_store = checkpoint_store
         self.synthesizer = synthesizer
+        self.memory = memory
 
 
 def build_agent_system(
@@ -50,6 +52,7 @@ def build_agent_system(
     event_bus: Optional[AsyncEventBus] = None,
     settings: Optional[JarvisSettings] = None,
     checkpoint_dir: Optional[Path] = None,
+    memory: Optional[Any] = None,
     register_builtins: bool = True,
 ) -> AgentSystem:
     """Wires the complete autonomous multi-agent orchestration architecture."""
@@ -71,6 +74,7 @@ def build_agent_system(
         agent_registry=registry,
         tool_executor=tool_system.executor if tool_system else None,
         router=router,
+        memory=memory,
     )
     verifier = AgentVerifier(
         sandbox=tool_system.sandbox if tool_system else None,
@@ -90,6 +94,7 @@ def build_agent_system(
         checkpoint_store=checkpoint_store,
         synthesizer=synthesizer,
         event_bus=event_bus,
+        memory=memory,
     )
 
     return AgentSystem(
@@ -102,4 +107,5 @@ def build_agent_system(
         approval_manager=approval_manager,
         checkpoint_store=checkpoint_store,
         synthesizer=synthesizer,
+        memory=memory,
     )
