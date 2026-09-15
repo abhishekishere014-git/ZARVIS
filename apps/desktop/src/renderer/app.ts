@@ -182,6 +182,41 @@ export class ZarvisApp {
     window.zarvis.system.onRestartSubsystem?.((subsystem) => {
       this.handleRestartSubsystem(subsystem);
     });
+
+    window.zarvis.system.onNavigateTab?.((tab) => {
+      this.switchTab(tab);
+    });
+
+    window.zarvis.system.onPauseToggle?.((isPaused) => {
+      this.handlePauseToggle(isPaused);
+    });
+  }
+
+  public handlePauseToggle(isPaused: boolean): void {
+    if (isPaused) {
+      this.stopSpeaking();
+      this.stopListening();
+      this.store.setAssistantState("IDLE");
+      window.zarvis?.tray.updateStatus("Paused", "amber");
+      window.zarvis?.notifications.show("ZARVIS Paused", "Assistant actions paused via tray", "info");
+      this.store.addActivity({
+        id: `act_${Date.now()}`,
+        title: "Assistant Paused",
+        category: "system",
+        description: "Voice and autonomous tasks paused via system tray",
+        timestamp: new Date().toLocaleTimeString(),
+      });
+    } else {
+      window.zarvis?.tray.updateStatus("Ready", "green");
+      window.zarvis?.notifications.show("ZARVIS Resumed", "Assistant actions active", "info");
+      this.store.addActivity({
+        id: `act_${Date.now()}`,
+        title: "Assistant Resumed",
+        category: "system",
+        description: "Assistant active and ready",
+        timestamp: new Date().toLocaleTimeString(),
+      });
+    }
   }
 
   private isMuted = false;

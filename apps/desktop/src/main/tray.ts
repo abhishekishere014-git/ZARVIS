@@ -1,5 +1,7 @@
 /**
  * Windows System Tray integration for ZARVIS.
+ * Provides instant access, voice triggers, mute, pause, activity, settings,
+ * process restart controls, and clean shutdown.
  */
 
 import * as fs from "node:fs";
@@ -7,14 +9,26 @@ import * as path from "node:path";
 import { Menu, Tray, nativeImage, app } from "electron";
 import { WindowManager } from "./window-manager";
 
+export interface TrayCallbacks {
+  onQuit: () => void;
+  onActivateVoice: () => void;
+  onTogglePause?: (isPaused: boolean) => void;
+  onNavigateTab?: (tab: string) => void;
+  onRestartCore?: () => void;
+  onRestartGateway?: () => void;
+}
+
 export class SystemTrayManager {
   private tray: Tray | null = null;
   private statusText = "Online • Ready";
+  private isMuted = false;
+  private isPaused = false;
 
   constructor(
     private readonly windowManager: WindowManager,
     private readonly onQuit: () => void,
-    private readonly onActivateVoice: () => void
+    private readonly onActivateVoice: () => void,
+    private readonly callbacks?: Partial<TrayCallbacks>
   ) {}
 
   public createTray(): Tray {
@@ -39,6 +53,16 @@ export class SystemTrayManager {
     }
   }
 
+  public setMuted(muted: boolean): void {
+    this.isMuted = muted;
+    this.updateContextMenu();
+  }
+
+  public setPaused(paused: boolean): void {
+    this.isPaused = paused;
+    this.updateContextMenu();
+  }
+
   public updateContextMenu(): void {
     if (!this.tray) return;
 
@@ -61,10 +85,44 @@ export class SystemTrayManager {
       },
       {
         label: "Mute Microphone",
+        type: "checkbox",
+        checked: this.isMuted,
         click: () => {
-          // Toggle mute event
+          this.isMuted = !this.isMuted;
           const win = this.windowManager.getMainWindow();
           win?.webContents.send("zarvis:voice:muteToggle");
+          this.updateContextMenu();
+        },
+      },
+      {
+        label: this.isPaused ? "Resume Assistant" : "Pause Assistant",
+        type: "checkbox",
+        checked: this.isPaused,
+        click: () => {
+          this.isPaused = !this.isPaused;
+          const win = this.windowManager.getMainWindow();
+          win?.webContents.send("zarvis:assistant:pauseToggle", this.isPaused);
+          this.callbacks?.onTogglePause?.(this.isPaused);
+          this.updateContextMenu();
+        },
+      },
+      { type: "separator" },
+      {
+        label: "Activity",
+        click: () => {
+          this.windowManager.showAndFocus();
+          const win = this.windowManager.getMainWindow();
+          win?.webContents.send("zarvis:navigation:switchTab", "activity");
+          this.callbacks?.onNavigateTab?.("activity");
+        },
+      },
+      {
+        label: "Settings",
+        click: () => {
+          this.windowManager.showAndFocus();
+          const win = this.windowManager.getMainWindow();
+          win?.webContents.send("zarvis:navigation:switchTab", "settings");
+          this.callbacks?.onNavigateTab?.("settings");
         },
       },
       {
@@ -79,15 +137,23 @@ export class SystemTrayManager {
       {
         label: "Restart Python Core",
         click: () => {
-          const win = this.windowManager.getMainWindow();
-          win?.webContents.send("zarvis:system:restartSubsystem", "python-core");
+          if (this.callbacks?.onRestartCore) {
+            this.callbacks.onRestartCore();
+          } else {
+            const win = this.windowManager.getMainWindow();
+            win?.webContents.send("zarvis:system:restartSubsystem", "python-core");
+          }
         },
       },
       {
         label: "Restart Node Gateway",
         click: () => {
-          const win = this.windowManager.getMainWindow();
-          win?.webContents.send("zarvis:system:restartSubsystem", "node-gateway");
+          if (this.callbacks?.onRestartGateway) {
+            this.callbacks.onRestartGateway();
+          } else {
+            const win = this.windowManager.getMainWindow();
+            win?.webContents.send("zarvis:system:restartSubsystem", "node-gateway");
+          }
         },
       },
       { type: "separator" },

@@ -1,5 +1,7 @@
 /**
  * ZARVIS Electron Main Process Entry Point.
+ * Orchestrates Window Lifecycle, System Tray, Global Hotkeys, Native Notifications,
+ * and Child Process Lifecycle Supervision (Python Core & Node Gateway).
  */
 
 import { app, ipcMain } from "electron";
@@ -8,6 +10,7 @@ import { WindowManager } from "./window-manager";
 import { SystemTrayManager } from "./tray";
 import { HotkeyManager } from "./hotkeys";
 import { NotificationManager, NotificationPayload } from "./notifications";
+import { ProcessSupervisor, ServiceConfig } from "./supervisor";
 
 const gotTheLock = app.requestSingleInstanceLock();
 
@@ -17,11 +20,31 @@ if (!gotTheLock) {
   let windowManager: WindowManager | null = null;
   let trayManager: SystemTrayManager | null = null;
   let hotkeyManager: HotkeyManager | null = null;
+  let supervisor: ProcessSupervisor | null = null;
 
+  const projectRoot = path.resolve(__dirname, "../../..");
   const preloadPath = path.join(__dirname, "../preload/index.js");
   const htmlPath = path.join(__dirname, "../renderer/index.html");
 
   const gatewayUrl = process.env.GATEWAY_URL || "ws://127.0.0.1:3000/ws";
+
+  const pythonCoreConfig: ServiceConfig = {
+    name: "python-core",
+    command: process.platform === "win32"
+      ? path.join(projectRoot, ".venv", "Scripts", "python.exe")
+      : path.join(projectRoot, ".venv", "bin", "python"),
+    args: [path.join(projectRoot, "services", "python-core", "jarvis", "__main__.py")],
+    port: 8765,
+    cwd: projectRoot,
+  };
+
+  const nodeGatewayConfig: ServiceConfig = {
+    name: "node-gateway",
+    command: "node",
+    args: [path.join(projectRoot, "services", "node-gateway", "dist", "index.js")],
+    port: 3000,
+    cwd: path.join(projectRoot, "services", "node-gateway"),
+  };
 
   app.on("second-instance", () => {
     if (windowManager) {
@@ -29,27 +52,84 @@ if (!gotTheLock) {
     }
   });
 
-  app.whenReady().then(() => {
+  app.whenReady().then(async () => {
+    // 1. Initialize Window Manager
     windowManager = new WindowManager(preloadPath, htmlPath);
     windowManager.createWindow();
+
+    // 2. Initialize Process Supervisor
+    supervisor = new ProcessSupervisor(projectRoot);
+
+    // Supervised start (auto-attach if already running in dev mode, or spawn)
+    try {
+      await supervisor.startService(pythonCoreConfig);
+      await supervisor.startService(nodeGatewayConfig);
+    } catch (err) {
+      console.warn("Service auto-start warning:", err);
+    }
 
     const onActivateVoice = () => {
       const win = windowManager?.getMainWindow();
       win?.webContents.send("zarvis:voice:activate");
     };
 
-    const onQuit = () => {
+    const onQuit = async () => {
       windowManager?.setQuitting(true);
+      if (supervisor) {
+        await supervisor.stopAll();
+      }
       app.quit();
     };
 
-    trayManager = new SystemTrayManager(windowManager, onQuit, onActivateVoice);
+    const onRestartCore = async () => {
+      const win = windowManager?.getMainWindow();
+      win?.webContents.send("zarvis:system:restartSubsystem", "python-core");
+      NotificationManager.show({
+        title: "Process Supervisor",
+        body: "Restarting Python Core daemon...",
+        level: "info",
+      });
+      if (supervisor) {
+        await supervisor.restartService(pythonCoreConfig);
+      }
+    };
+
+    const onRestartGateway = async () => {
+      const win = windowManager?.getMainWindow();
+      win?.webContents.send("zarvis:system:restartSubsystem", "node-gateway");
+      NotificationManager.show({
+        title: "Process Supervisor",
+        body: "Restarting Node Gateway service...",
+        level: "info",
+      });
+      if (supervisor) {
+        await supervisor.restartService(nodeGatewayConfig);
+      }
+    };
+
+    // 3. Initialize System Tray
+    trayManager = new SystemTrayManager(windowManager, onQuit, onActivateVoice, {
+      onQuit,
+      onActivateVoice,
+      onRestartCore,
+      onRestartGateway,
+      onNavigateTab: (tab) => {
+        windowManager?.getMainWindow()?.webContents.send("zarvis:navigation:switchTab", tab);
+      },
+      onTogglePause: (isPaused) => {
+        windowManager?.getMainWindow()?.webContents.send("zarvis:assistant:pauseToggle", isPaused);
+      },
+    });
     trayManager.createTray();
 
+    // 4. Initialize Global Hotkeys
     hotkeyManager = new HotkeyManager(windowManager, onActivateVoice);
-    hotkeyManager.register("CommandOrControl+Space");
+    const hotkeyRes = hotkeyManager.register("CommandOrControl+Space");
+    if (!hotkeyRes.success) {
+      console.warn("Global hotkey registration notice:", hotkeyRes.error);
+    }
 
-    // IPC Handlers
+    // 5. IPC Handlers
     ipcMain.on("zarvis:window:minimize", () => {
       windowManager?.getMainWindow()?.minimize();
     });
@@ -98,11 +178,35 @@ if (!gotTheLock) {
     ipcMain.handle("zarvis:system:getGatewayUrl", () => {
       return gatewayUrl;
     });
+
+    ipcMain.handle("zarvis:system:restartProcess", async (_, processName: "python-core" | "node-gateway") => {
+      if (processName === "python-core") {
+        await onRestartCore();
+      } else if (processName === "node-gateway") {
+        await onRestartGateway();
+      }
+      return true;
+    });
+
+    ipcMain.handle("zarvis:system:getProcessStatus", () => {
+      if (!supervisor) return [];
+      return [
+        supervisor.getStatus("python-core", 8765),
+        supervisor.getStatus("node-gateway", 3000),
+      ];
+    });
+  });
+
+  app.on("before-quit", async (e) => {
+    if (supervisor) {
+      await supervisor.stopAll();
+    }
   });
 
   app.on("will-quit", () => {
     hotkeyManager?.unregisterAll();
     trayManager?.destroy();
+    windowManager?.destroy();
   });
 
   app.on("window-all-closed", () => {

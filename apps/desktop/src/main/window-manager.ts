@@ -132,4 +132,17 @@ export class WindowManager {
     this.window.show();
     this.window.focus();
   }
+
+  public destroy(): void {
+    if (this.window) {
+      this.isQuitting = true;
+      try {
+        this.window.removeAllListeners();
+        if (!this.window.isDestroyed()) {
+          this.window.destroy();
+        }
+      } catch {}
+      this.window = null;
+    }
+  }
 }

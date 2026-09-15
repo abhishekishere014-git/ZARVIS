@@ -50,6 +50,16 @@ const api: ZarvisBridgeApi = {
       ipcRenderer.on("zarvis:system:restartSubsystem", listener);
       return () => ipcRenderer.removeListener("zarvis:system:restartSubsystem", listener);
     },
+    onNavigateTab: (callback) => {
+      const listener = (_: any, tab: string) => callback(tab);
+      ipcRenderer.on("zarvis:navigation:switchTab", listener);
+      return () => ipcRenderer.removeListener("zarvis:navigation:switchTab", listener);
+    },
+    onPauseToggle: (callback) => {
+      const listener = (_: any, isPaused: boolean) => callback(isPaused);
+      ipcRenderer.on("zarvis:assistant:pauseToggle", listener);
+      return () => ipcRenderer.removeListener("zarvis:assistant:pauseToggle", listener);
+    },
   },
 };
 

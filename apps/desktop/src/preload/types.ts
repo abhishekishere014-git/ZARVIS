@@ -32,6 +32,8 @@ export interface ZarvisSystemBridgeApi {
   getGatewayUrl: () => Promise<string>;
   getVersion: () => string;
   onRestartSubsystem?: (callback: (subsystem: string) => void) => () => void;
+  onNavigateTab?: (callback: (tab: string) => void) => () => void;
+  onPauseToggle?: (callback: (isPaused: boolean) => void) => () => void;
 }
 
 export interface ZarvisBridgeApi {

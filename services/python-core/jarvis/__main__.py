@@ -26,6 +26,21 @@ async def main() -> None:
     if sys.platform != "win32":
         for sig in (signal.SIGINT, signal.SIGTERM):
             loop.add_signal_handler(sig, handle_signal)
+    else:
+        def win_handler(sig, frame):
+            logger.info("Signal %s received on Windows, initiating shutdown...", sig)
+            loop.call_soon_threadsafe(lambda: asyncio.create_task(engine.shutdown()))
+
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            try:
+                signal.signal(sig, win_handler)
+            except Exception:
+                pass
+        if hasattr(signal, "SIGBREAK"):
+            try:
+                signal.signal(signal.SIGBREAK, win_handler)
+            except Exception:
+                pass
 
     try:
         await engine.start()
