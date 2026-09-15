@@ -1,4 +1,4 @@
-﻿"""System bootstrap wiring all JARVIS subsystems into a unified runtime engine."""
+"""System bootstrap wiring all JARVIS subsystems into a unified runtime engine."""
 
 from __future__ import annotations
 
@@ -56,8 +56,22 @@ def bootstrap_system(
     logger.info("Agent Runtime initialized.")
 
     # 4. Vision Subsystem (Phase 09)
-    vision_manager = VisionManager(event_bus=target_engine.bus)
-    logger.info("Vision Subsystem initialized.")
+    try:
+        import sys
+        if sys.platform == "win32" and effective_settings.env != "test":
+            from jarvis.os.providers.windows import WindowsOSProvider
+            os_provider = WindowsOSProvider()
+        else:
+            from jarvis.os.providers.mock import MockOSProvider
+            os_provider = MockOSProvider()
+    except Exception:
+        from jarvis.os.providers.mock import MockOSProvider
+        os_provider = MockOSProvider()
+
+    from jarvis.os.screen.capture import ScreenCaptureManager
+    screen_capture = ScreenCaptureManager(provider=os_provider)
+    vision_manager = VisionManager(screen_capture=screen_capture, event_bus=target_engine.bus)
+    logger.info("Vision Subsystem initialized with ScreenCaptureManager.")
 
     # 5. Voice & Audio Pipeline (Phase 07)
     voice_pipeline = build_voice_pipeline(

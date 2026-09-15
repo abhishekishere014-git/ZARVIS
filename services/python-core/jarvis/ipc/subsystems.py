@@ -14,6 +14,7 @@ from jarvis.protocol.models import JarvisRequest
 from jarvis.tools.factory import ToolSystem
 from jarvis.tools.models import ToolRequest
 from jarvis.vision.manager import VisionManager
+from jarvis.voice.models import TTSRequest
 from jarvis.voice.pipeline import VoicePipeline
 
 logger = logging.getLogger("jarvis.ipc.subsystems")
@@ -42,10 +43,11 @@ class SubsystemRegistry:
         router.register_handler("vision.scan", self.handle_vision_scan)
         router.register_handler("voice.interact", self.handle_voice_interact)
         router.register_handler("voice.transcribe", self.handle_voice_transcribe)
+        router.register_handler("voice.stop", self.handle_voice_stop)
         router.register_handler("tools.list", self.handle_tools_list)
         router.register_handler("tools.execute", self.handle_tools_execute)
         router.register_handler("memory.stats", self.handle_memory_stats)
-        logger.info("Registered subsystem IPC handlers: agent.execute, vision.scan, voice.interact, voice.transcribe, tools.list, tools.execute, memory.stats")
+        logger.info("Registered subsystem IPC handlers: agent.execute, vision.scan, voice.interact, voice.transcribe, voice.stop, tools.list, tools.execute, memory.stats")
 
     async def handle_agent_execute(self, request: JarvisRequest) -> Dict[str, Any]:
         """Executes a user goal through the AgentOrchestrator."""
@@ -116,27 +118,63 @@ class SubsystemRegistry:
 
         logger.info("Handling voice interaction via IPC (text=%s, audio=%s)", bool(text), bool(audio_b64))
         if self.voice_pipeline:
+            import base64
             if audio_b64:
-                import base64
                 raw_bytes = base64.b64decode(audio_b64)
                 resp = await self.voice_pipeline.process_speech(raw_bytes)
+                
+                # Synthesize text to real audio bytes
+                try:
+                    tts_req = TTSRequest(text=resp.text)
+                    tts_res = await self.voice_pipeline.tts_provider.synthesize(tts_req)
+                    resp_audio_b64 = base64.b64encode(tts_res.audio_bytes).decode("ascii")
+                    duration_sec = tts_res.duration_sec
+                except Exception as tts_err:
+                    logger.warning("TTS synthesis failed in voice.interact: %s", tts_err)
+                    resp_audio_b64 = ""
+                    duration_sec = resp.duration_sec
+
                 return {
                     "text": resp.text,
+                    "audio_base64": resp_audio_b64,
                     "agent_status": resp.agent_status,
-                    "duration_sec": resp.duration_sec,
+                    "duration_sec": duration_sec,
                 }
             elif text:
+                try:
+                    tts_req = TTSRequest(text=text)
+                    tts_res = await self.voice_pipeline.tts_provider.synthesize(tts_req)
+                    resp_audio_b64 = base64.b64encode(tts_res.audio_bytes).decode("ascii")
+                    duration_sec = tts_res.duration_sec
+                except Exception as tts_err:
+                    logger.warning("TTS synthesis failed in voice.interact text: %s", tts_err)
+                    resp_audio_b64 = ""
+                    duration_sec = 2.0
+
                 return {
-                    "text": f"ZARVIS Voice response synthesized for: {text}",
-                    "provider": "kokoro",
+                    "text": text,
+                    "audio_base64": resp_audio_b64,
+                    "provider": getattr(self.voice_pipeline.tts_provider, "name", "kokoro"),
+                    "duration_sec": duration_sec,
                     "status": "ready",
                 }
 
         return {
             "text": text or "I am listening. Voice pipeline is operational.",
+            "audio_base64": "",
             "status": "ready",
             "provider": "mock",
         }
+
+    async def handle_voice_stop(self, request: JarvisRequest) -> Dict[str, Any]:
+        """Stops active voice playback and interrupts current session."""
+        logger.info("Handling voice.stop via IPC")
+        if self.voice_pipeline:
+            try:
+                await self.voice_pipeline.playback.stop()
+            except Exception as e:
+                logger.debug("Playback stop exception: %s", e)
+        return {"stopped": True, "status": "idle"}
 
     async def handle_voice_transcribe(self, request: JarvisRequest) -> Dict[str, Any]:
         """Transcribes incoming audio bytes via STT router."""

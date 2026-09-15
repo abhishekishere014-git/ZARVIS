@@ -11,6 +11,11 @@ export class ZarvisApp {
   private readonly gateway: GatewayConnection;
   private holdTimer: any = null;
   private isHolding = false;
+  private mediaRecorder: any = null;
+  private audioChunks: Blob[] = [];
+  private mediaStream: any = null;
+  private activeAudioSource: any = null;
+  private audioContext: any = null;
 
   constructor() {
     this.store = new DesktopStore();
@@ -229,8 +234,31 @@ export class ZarvisApp {
 
     this.gateway.onEvent((event) => {
       const payload = event.payload as Record<string, any>;
-      if (event.type.startsWith("agent.")) {
-        const agentName = String(payload.agent || "Planner");
+      if (event.type === "agent.planning") {
+        this.store.addActivity({
+          id: `act_${Date.now()}`,
+          title: "Agent Planner",
+          category: "agent",
+          description: "Decomposing goal and generating execution DAG...",
+          timestamp: new Date().toLocaleTimeString(),
+        });
+        this.store.updateAgent("Planner", { status: "working" });
+      }
+
+      if (event.type === "agent.task.started") {
+        const agentName = String(payload.agent_id || "Agent");
+        this.store.updateAgent(agentName, { status: "working" });
+        this.store.addActivity({
+          id: `act_${Date.now()}`,
+          title: `Task Started: ${String(payload.task_id || "")}`,
+          category: "agent",
+          description: `Delegated to ${agentName}`,
+          timestamp: new Date().toLocaleTimeString(),
+        });
+      }
+
+      if (event.type.startsWith("agent.") && event.type !== "agent.planning" && event.type !== "agent.task.started") {
+        const agentName = String(payload.agent || payload.agent_id || "Planner");
         this.store.updateAgent(agentName, {
           status: payload.status === "completed" ? "complete" : "working",
         });
@@ -242,6 +270,16 @@ export class ZarvisApp {
           title: `Tool Executed: ${String(payload.tool || "tool")}`,
           category: "tool",
           description: String(payload.output || "Execution completed"),
+          timestamp: new Date().toLocaleTimeString(),
+        });
+      }
+
+      if (event.type === "agent.completed") {
+        this.store.addActivity({
+          id: `act_${Date.now()}`,
+          title: "Agent Workflow Complete",
+          category: "agent",
+          description: "All task waves verified and synthesized.",
           timestamp: new Date().toLocaleTimeString(),
         });
       }
@@ -277,11 +315,29 @@ export class ZarvisApp {
     this.stopListening();
   }
 
-  public startListening(mode: "tap" | "hold"): void {
+  public async startListening(mode: "tap" | "hold"): Promise<void> {
     this.store.setAssistantState("LISTENING", mode);
     this.store.setTranscription("Listening...");
     window.zarvis?.voice.notifyStateChange("Listening...");
     window.zarvis?.tray.updateStatus("Listening...");
+
+    this.audioChunks = [];
+    if (typeof navigator !== "undefined" && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        this.mediaStream = stream;
+        const recorder = new (window as any).MediaRecorder(stream);
+        recorder.ondataavailable = (e: any) => {
+          if (e.data && e.data.size > 0) {
+            this.audioChunks.push(e.data);
+          }
+        };
+        recorder.start(100);
+        this.mediaRecorder = recorder;
+      } catch (err) {
+        // Fallback for environments without physical mic access
+      }
+    }
   }
 
   public async stopListening(): Promise<void> {
@@ -296,16 +352,47 @@ export class ZarvisApp {
       return;
     }
 
-    // Genuinely invoke Voice Pipeline over Gateway
+    let audioBase64 = "";
+
+    if (this.mediaRecorder && this.mediaRecorder.state !== "inactive") {
+      try {
+        await new Promise<void>((resolve) => {
+          this.mediaRecorder.onstop = () => resolve();
+          this.mediaRecorder.stop();
+        });
+
+        if (this.mediaStream) {
+          this.mediaStream.getTracks().forEach((track: any) => track.stop());
+          this.mediaStream = null;
+        }
+
+        if (this.audioChunks.length > 0) {
+          const audioBlob = new Blob(this.audioChunks, { type: "audio/webm" });
+          const buffer = await audioBlob.arrayBuffer();
+          const bytes = new Uint8Array(buffer);
+          let binary = "";
+          for (let i = 0; i < bytes.byteLength; i++) {
+            binary += String.fromCharCode(bytes[i]);
+          }
+          audioBase64 = btoa(binary);
+        }
+      } catch {
+        // Gracefully proceed if audio buffer conversion fails
+      }
+      this.mediaRecorder = null;
+    }
+
     try {
       const resp = await this.gateway.sendRequest("voice.interact", {
-        text: "Voice interaction triggered from desktop client",
+        audio_base64: audioBase64 || undefined,
+        text: audioBase64 ? undefined : "Voice command triggered from desktop client",
       });
+
       if (resp.success && resp.payload) {
         const payload = resp.payload as Record<string, any>;
-        const speechText = payload.text || "Voice pipeline ready and operational.";
+        const speechText = payload.text || "Voice pipeline operational.";
         this.store.setTranscription(speechText);
-        this.startSpeaking(speechText);
+        await this.startSpeaking(speechText, payload.audio_base64);
       } else {
         this.store.setAssistantState("IDLE");
       }
@@ -314,13 +401,55 @@ export class ZarvisApp {
     }
   }
 
-  public startSpeaking(text: string): void {
+  public async startSpeaking(text: string, audioBase64?: string): Promise<void> {
+    // 1. Cancel previous playback
+    this.stopSpeakingPlaybackOnly();
+
     this.store.setAssistantState("SPEAKING");
     this.store.setSpeakingText(text);
     window.zarvis?.voice.notifyStateChange("Speaking...");
     window.zarvis?.tray.updateStatus("Speaking...");
 
-    // Use native speech synthesis in Chromium/Electron for real spoken audio
+    // 2. If real synthesized audio bytes returned from Kokoro TTS, play via Web Audio API
+    if (audioBase64 && typeof window !== "undefined") {
+      try {
+        const binaryStr = atob(audioBase64);
+        const bytes = new Uint8Array(binaryStr.length);
+        for (let i = 0; i < binaryStr.length; i++) {
+          bytes[i] = binaryStr.charCodeAt(i);
+        }
+
+        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioCtx) {
+          this.audioContext = this.audioContext || new AudioCtx();
+          if (this.audioContext.state === "suspended") {
+            await this.audioContext.resume();
+          }
+
+          const audioBuffer = await this.audioContext.decodeAudioData(bytes.buffer.slice(0));
+          const source = this.audioContext.createBufferSource();
+          source.buffer = audioBuffer;
+          source.connect(this.audioContext.destination);
+
+          source.onended = () => {
+            if (this.store.getState().assistantState === "SPEAKING") {
+              this.store.setAssistantState("IDLE");
+              window.zarvis?.voice.notifyStateChange("Ready");
+              window.zarvis?.tray.updateStatus("Ready");
+            }
+            this.activeAudioSource = null;
+          };
+
+          this.activeAudioSource = source;
+          source.start(0);
+          return;
+        }
+      } catch {
+        // Fallback to native SpeechSynthesis
+      }
+    }
+
+    // 3. Fallback to native Chromium SpeechSynthesis
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       try {
         window.speechSynthesis.cancel();
@@ -339,29 +468,34 @@ export class ZarvisApp {
         window.speechSynthesis.speak(utterance);
         return;
       } catch {
-        // Fallback to duration timeout
-      }
-    }
-
-    const durationMs = Math.max(2000, Math.min(text.length * 60, 7000));
-    setTimeout(() => {
-      if (this.store.getState().assistantState === "SPEAKING") {
         this.store.setAssistantState("IDLE");
-        window.zarvis?.voice.notifyStateChange("Ready");
-        window.zarvis?.tray.updateStatus("Ready");
       }
-    }, durationMs);
+    } else {
+      this.store.setAssistantState("IDLE");
+    }
   }
 
-  public stopSpeaking(): void {
+  private stopSpeakingPlaybackOnly(): void {
+    if (this.activeAudioSource) {
+      try {
+        this.activeAudioSource.stop();
+      } catch {}
+      this.activeAudioSource = null;
+    }
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       try {
         window.speechSynthesis.cancel();
-      } catch {
-        // ignore
-      }
+      } catch {}
     }
+  }
+
+  public stopSpeaking(): void {
+    this.stopSpeakingPlaybackOnly();
+    // Dispatch real voice.stop to interrupt Python Core voice session and playback task
+    this.gateway.sendRequest("voice.stop").catch(() => {});
     this.store.setAssistantState("IDLE");
+    window.zarvis?.voice.notifyStateChange("Ready");
+    window.zarvis?.tray.updateStatus("Ready");
   }
 
   public async submitCommand(commandText: string): Promise<void> {

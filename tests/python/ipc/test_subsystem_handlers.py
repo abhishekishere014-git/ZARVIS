@@ -179,3 +179,21 @@ async def test_tools_list_fallback(empty_registry):
     res = await router.dispatch(req)
     assert res.success is True
     assert len(res.payload["tools"]) >= 4
+
+
+@pytest.mark.asyncio
+async def test_voice_stop(empty_registry):
+    router = IPCRouter()
+    empty_registry.register_handlers(router)
+    req = JarvisRequest(
+        id="req_8",
+        type="voice.stop",
+        version=PROTOCOL_VERSION,
+        timestamp="2026-09-15T00:00:00Z",
+        payload={},
+    )
+    res = await router.dispatch(req)
+    assert res.success is True
+    assert res.payload["stopped"] is True
+    assert res.payload["status"] == "idle"
+
