@@ -134,7 +134,7 @@ WebSocket gateway: `ws://127.0.0.1:3000/ws`
 * [x] **Phase 07:** Voice Pipeline (Vosk Fast-Path + Faster-Whisper + Kokoro ONNX)
 * [x] **Phase 08:** Controlled Windows OS Automation & Computer Interaction Layer
 * [x] **Phase 09:** Vision, Screen Understanding & Visual Grounding Layer
-* [ ] **Phase 10:** Headless IPC Bridge (Python <-> Node Gateway link)
+* [x] **Phase 10:** Headless IPC Bridge (Python <-> Node Gateway link)
 * [ ] **Phase 11:** Desktop Client & System Tray UI
 * [ ] **Phase 12:** Hardening, E2E Testing & Release
 
