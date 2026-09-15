@@ -236,7 +236,9 @@ export class GatewayConnection {
     if (this.reconnectTimer || this.isIntentionallyClosed) return;
 
     this.reconnectAttempts++;
-    const delay = Math.min(1000 * Math.pow(1.5, this.reconnectAttempts - 1), 10000);
+    const baseDelay = Math.min(1000 * Math.pow(1.5, this.reconnectAttempts - 1), 10000);
+    const jitter = baseDelay * (0.8 + Math.random() * 0.4);
+    const delay = Math.round(jitter);
 
     this.reconnectTimer = setTimeout(async () => {
       this.reconnectTimer = null;
@@ -256,8 +258,28 @@ export class GatewayConnection {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
+
+    // Fail all in-flight requests on explicit disconnect
+    for (const [id, pending] of this.pendingRequests) {
+      clearTimeout(pending.timer);
+      pending.resolve({
+        id,
+        type: "unknown",
+        version: PROTOCOL_VERSION,
+        timestamp: new Date().toISOString(),
+        success: false,
+        error: {
+          code: "CONNECTION_CLOSED",
+          message: "Gateway connection disconnected",
+        },
+      });
+    }
+    this.pendingRequests.clear();
+
     if (this.ws) {
-      this.ws.close();
+      try {
+        this.ws.close();
+      } catch {}
       this.ws = null;
     }
     this.notifyState(false);

@@ -262,13 +262,17 @@ export class ZarvisApp {
         this.store.setTelemetry({ gateway: "healthy" });
         this.refreshSystemHealth();
       } else {
+        this.stopSpeakingPlaybackOnly();
+        this.stopListening();
         this.store.setAssistantState("OFFLINE");
-        this.store.setTelemetry({ gateway: "offline", ipc: "disconnected" });
+        this.store.setTelemetry({ gateway: "offline", ipc: "disconnected", core: "offline" });
       }
     });
 
     this.gateway.onEvent((event) => {
-      const payload = event.payload as Record<string, any>;
+      try {
+        if (!event || typeof event.type !== "string") return;
+        const payload = (event.payload as Record<string, any>) || {};
       if (event.type === "agent.planning") {
         this.store.addActivity({
           id: `act_${Date.now()}`,
@@ -309,14 +313,17 @@ export class ZarvisApp {
         });
       }
 
-      if (event.type === "agent.completed") {
-        this.store.addActivity({
-          id: `act_${Date.now()}`,
-          title: "Agent Workflow Complete",
-          category: "agent",
-          description: "All task waves verified and synthesized.",
-          timestamp: new Date().toLocaleTimeString(),
-        });
+        if (event.type === "agent.completed") {
+          this.store.addActivity({
+            id: `act_${Date.now()}`,
+            title: "Agent Workflow Complete",
+            category: "agent",
+            description: "All task waves verified and synthesized.",
+            timestamp: new Date().toLocaleTimeString(),
+          });
+        }
+      } catch (evtErr) {
+        console.warn("Failed to process event safely:", evtErr);
       }
     });
   }
@@ -588,7 +595,8 @@ export class ZarvisApp {
           text: `Task failed: ${errMsg}`,
           timestamp: new Date().toLocaleTimeString(),
         });
-        this.store.setAssistantState("ERROR");
+        this.store.setAssistantState("IDLE");
+        window.zarvis?.notifications.show("Task Interrupted", errMsg, "warning");
       }
     } catch (err: any) {
       this.store.addMessage({
@@ -597,7 +605,8 @@ export class ZarvisApp {
         text: `Failed to process command: ${err.message || "Unknown error"}`,
         timestamp: new Date().toLocaleTimeString(),
       });
-      this.store.setAssistantState("ERROR");
+      this.store.setAssistantState("IDLE");
+      window.zarvis?.notifications.show("Task Error", err.message || "Unknown error", "error");
     }
   }
 
