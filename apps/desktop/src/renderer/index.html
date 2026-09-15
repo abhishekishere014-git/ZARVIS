@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ZARVIS</title>
+  <link rel="stylesheet" href="styles/main.css">
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+</head>
+<body class="bg-[#0B0F19] text-[#E2E8F0] antialiased select-none overflow-hidden h-screen flex flex-col">
+
+  <!-- ========================================================================= -->
+  <!-- MODE A: COMPACT FLOATING HUD CONTAINER                                    -->
+  <!-- ========================================================================= -->
+  <div id="hud-container" class="hidden h-full w-full flex items-center justify-center p-2">
+    <div class="bg-[#0E1420]/95 backdrop-blur-md border border-slate-700/80 rounded-full px-4 py-2 shadow-2xl flex items-center space-x-3 w-full max-w-sm justify-between">
+      
+      <!-- Brand & Status -->
+      <div class="flex items-center space-x-2 border-r border-slate-800 pr-3">
+        <div class="w-6 h-6 rounded-full bg-blue-600/30 border border-blue-500/60 flex items-center justify-center font-bold text-blue-400 text-xs shadow-[0_0_10px_rgba(10,132,255,0.3)]">
+          Z
+        </div>
+        <span id="hud-status-text" class="text-xs font-medium text-slate-200">Ready</span>
+      </div>
+
+      <!-- Hero Voice Button in HUD -->
+      <button 
+        id="hud-mic-btn"
+        class="flex items-center space-x-1.5 px-3 py-1 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition-all shadow-sm active:scale-95 cursor-pointer"
+      >
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 02-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
+        <span id="hud-mic-label">Speak</span>
+      </button>
+
+      <!-- Vision Trigger -->
+      <button id="hud-vision-btn" title="Scan Screen" class="p-1.5 text-slate-400 hover:text-white rounded-full hover:bg-slate-800 transition-all">
+        <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+      </button>
+
+      <!-- Pin / Always on top -->
+      <button id="hud-pin-btn" title="Pin / Always on top" class="p-1.5 text-slate-400 hover:text-white rounded-full hover:bg-slate-800 transition-all">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>
+      </button>
+
+      <!-- Expand to Full Workspace -->
+      <button id="hud-expand-btn" title="Expand to Full Workspace" class="p-1.5 text-slate-400 hover:text-white rounded-full hover:bg-slate-800 transition-all">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODE B: FULL DESKTOP WORKSPACE CONTAINER                                  -->
+  <!-- ========================================================================= -->
+  <div id="workspace-container" class="flex-1 flex overflow-hidden p-3 gap-3">
+    
+    <!-- LEFT NAVIGATION SIDEBAR (220px) -->
+    <aside class="w-56 bg-[#080C14] rounded-xl border border-slate-800/80 flex flex-col justify-between p-3.5 shadow-xl">
+      <div>
+        <!-- Identity -->
+        <div class="flex items-center space-x-2.5 pb-4 mb-3 border-b border-slate-800/60">
+          <div class="w-8 h-8 rounded-lg bg-blue-600/20 border border-blue-500/40 flex items-center justify-center font-bold text-blue-400 text-sm shadow-[0_0_15px_rgba(10,132,255,0.25)]">
+            Z
+          </div>
+          <div>
+            <div class="text-sm font-semibold tracking-wide text-white flex items-center gap-1.5">
+              ZARVIS
+              <span class="text-[9px] font-bold px-1.5 py-0.5 bg-blue-500/15 text-blue-400 rounded border border-blue-500/30">v1.0</span>
+            </div>
+            <div class="text-[10px] text-slate-400">Desktop Assistant</div>
+          </div>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="space-y-1">
+          <button id="nav-home" class="w-full flex items-center space-x-2.5 px-3 py-2 text-xs font-medium rounded-lg bg-blue-600/15 text-blue-400 border border-blue-500/30 transition-all">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+            <span>Home</span>
+          </button>
+          <button id="nav-chat" class="w-full flex items-center space-x-2.5 px-3 py-2 text-xs font-medium rounded-lg text-slate-400 hover:text-white hover:bg-[#111827] transition-all">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
+            <span>Conversation</span>
+          </button>
+          <button id="nav-agents" class="w-full flex items-center space-x-2.5 px-3 py-2 text-xs font-medium rounded-lg text-slate-400 hover:text-white hover:bg-[#111827] transition-all">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/></svg>
+            <span class="flex-1 text-left">Agents</span>
+            <span class="text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.2 rounded font-mono">10</span>
+          </button>
+          <button id="nav-activity" class="w-full flex items-center space-x-2.5 px-3 py-2 text-xs font-medium rounded-lg text-slate-400 hover:text-white hover:bg-[#111827] transition-all">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <span>Activity</span>
+          </button>
+          <button id="nav-memory" class="w-full flex items-center space-x-2.5 px-3 py-2 text-xs font-medium rounded-lg text-slate-400 hover:text-white hover:bg-[#111827] transition-all">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+            <span>Memory</span>
+          </button>
+          <button id="nav-settings" class="w-full flex items-center space-x-2.5 px-3 py-2 text-xs font-medium rounded-lg text-slate-400 hover:text-white hover:bg-[#111827] transition-all">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            <span>Settings</span>
+          </button>
+        </nav>
+      </div>
+
+      <!-- Real System Telemetry -->
+      <div class="bg-[#111827]/80 rounded-lg p-3 border border-slate-800/80 text-[10px] space-y-1.5">
+        <div class="flex justify-between items-center text-slate-300 font-semibold mb-1">
+          <span>System Status</span>
+          <span id="telemetry-summary-dot" class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+        </div>
+        <div class="flex justify-between text-slate-400"><span>Core</span><span id="tel-core" class="text-emerald-400 font-mono">● Healthy</span></div>
+        <div class="flex justify-between text-slate-400"><span>Gateway</span><span id="tel-gateway" class="text-emerald-400 font-mono">● Healthy</span></div>
+        <div class="flex justify-between text-slate-400"><span>IPC</span><span id="tel-ipc" class="text-emerald-400 font-mono">● Connected</span></div>
+        <div class="flex justify-between text-slate-400"><span>Voice</span><span id="tel-voice" class="text-emerald-400 font-mono">● Ready</span></div>
+        <div class="flex justify-between text-slate-400"><span>Vision</span><span id="tel-vision" class="text-emerald-400 font-mono">● Ready</span></div>
+        <div class="flex justify-between text-slate-400"><span>Memory</span><span id="tel-memory" class="text-emerald-400 font-mono">● Ready</span></div>
+      </div>
+    </aside>
+
+    <!-- CENTER MAIN WORKSPACE -->
+    <main class="flex-1 bg-[#0B0F19] rounded-xl border border-slate-800/80 flex flex-col justify-between overflow-hidden shadow-xl relative">
+      
+      <!-- Top Titlebar / Action Controls -->
+      <header class="px-5 py-3 border-b border-slate-800/60 flex items-center justify-between">
+        <div class="flex items-center space-x-2 text-xs">
+          <span id="connection-dot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
+          <span id="connection-text" class="text-slate-300 font-medium">ZARVIS Online</span>
+          <span class="text-slate-600">•</span>
+          <span class="text-slate-500 font-mono text-[11px]">127.0.0.1:3000</span>
+        </div>
+
+        <div class="flex items-center space-x-2.5">
+          <button id="btn-scan-screen" title="Scan Screen" class="px-2.5 py-1 text-xs bg-slate-800/80 hover:bg-slate-700 text-slate-300 rounded-md flex items-center gap-1.5 border border-slate-700/60 transition-all">
+            <svg class="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+            <span>Scan Screen</span>
+          </button>
+          <button id="btn-pin-toggle" title="Pin / Always on top" class="p-1.5 text-slate-400 hover:text-white rounded transition-all">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>
+          </button>
+          <button id="btn-switch-hud" title="Switch to Compact HUD" class="p-1.5 text-slate-400 hover:text-white rounded transition-all">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <!-- VIEW CANVAS (Screens) -->
+      <div id="screen-container" class="flex-1 overflow-y-auto p-6 flex flex-col items-center justify-center">
+        
+        <!-- HOME SCREEN -->
+        <div id="view-home" class="w-full max-w-xl flex flex-col items-center text-center space-y-6">
+          <div class="relative flex items-center justify-center">
+            <div id="core-orb" class="w-28 h-28 rounded-full border border-blue-500/20 bg-gradient-to-b from-blue-500/10 to-transparent flex items-center justify-center transition-all duration-300">
+              <div class="w-20 h-20 rounded-full border border-blue-500/40 bg-[#0B0F19] flex items-center justify-center shadow-[0_0_25px_rgba(10,132,255,0.15)]">
+                <div class="w-12 h-12 rounded-full bg-blue-600/20 flex items-center justify-center text-blue-400 font-bold text-xl">
+                  Z
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h2 id="home-greeting" class="text-2xl font-semibold text-slate-100 tracking-tight">Good morning, Abhishek</h2>
+            <p id="home-status-line" class="text-xs text-slate-400 mt-1">How can I assist your workflow today?</p>
+          </div>
+
+          <!-- HERO MICROPHONE: Tap to speak & Hold to speak -->
+          <div class="flex flex-col items-center space-y-2">
+            <button 
+              id="hero-voice-btn"
+              class="group relative flex items-center gap-3 px-6 py-3 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-medium text-sm shadow-[0_4px_20px_rgba(10,132,255,0.3)] transition-all active:scale-95 cursor-pointer"
+            >
+              <svg id="hero-mic-svg" class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 02-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
+              <span id="hero-mic-text">Tap to speak or Hold for PTT</span>
+            </button>
+            <div class="text-[11px] text-slate-500 flex items-center gap-1.5">
+              <span>Or press</span>
+              <kbd class="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-[10px] text-slate-300 font-mono">Ctrl + Space</kbd>
+            </div>
+          </div>
+
+          <!-- Audio Waveform -->
+          <div id="live-waveform" class="hidden flex items-center justify-center space-x-1.5 h-8">
+            <div class="wave-bar wave-1"></div>
+            <div class="wave-bar wave-2"></div>
+            <div class="wave-bar wave-3"></div>
+            <div class="wave-bar wave-4"></div>
+            <div class="wave-bar wave-5"></div>
+            <div class="wave-bar wave-2"></div>
+            <div class="wave-bar wave-1"></div>
+          </div>
+
+          <!-- Transcription Preview -->
+          <div id="live-transcription-box" class="hidden w-full max-w-md bg-[#101623] border border-blue-500/30 rounded-lg p-3 text-xs text-blue-300 italic text-left">
+            "..."
+          </div>
+
+          <!-- Quick Shortcuts -->
+          <div class="w-full pt-3">
+            <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider text-left mb-2.5">
+              Quick Shortcuts
+            </div>
+            <div class="grid grid-cols-4 gap-2.5">
+              <button id="qa-code" class="bg-[#111827] hover:bg-[#162032] border border-slate-800 hover:border-slate-700 p-2.5 rounded-lg flex flex-col items-center text-center transition-all group">
+                <svg class="w-5 h-5 text-blue-400 mb-1.5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+                <span class="text-xs font-medium text-slate-300">Open VS Code</span>
+                <span class="text-[10px] text-slate-500 mt-0.5">Development</span>
+              </button>
+              <button id="qa-search" class="bg-[#111827] hover:bg-[#162032] border border-slate-800 hover:border-slate-700 p-2.5 rounded-lg flex flex-col items-center text-center transition-all group">
+                <svg class="w-5 h-5 text-indigo-400 mb-1.5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                <span class="text-xs font-medium text-slate-300">Search Web</span>
+                <span class="text-[10px] text-slate-500 mt-0.5">Research</span>
+              </button>
+              <button id="qa-office" class="bg-[#111827] hover:bg-[#162032] border border-slate-800 hover:border-slate-700 p-2.5 rounded-lg flex flex-col items-center text-center transition-all group">
+                <svg class="w-5 h-5 text-emerald-400 mb-1.5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                <span class="text-xs font-medium text-slate-300">Office Docs</span>
+                <span class="text-[10px] text-slate-500 mt-0.5">DOCX / XLSX</span>
+              </button>
+              <button id="qa-automation" class="bg-[#111827] hover:bg-[#162032] border border-slate-800 hover:border-slate-700 p-2.5 rounded-lg flex flex-col items-center text-center transition-all group">
+                <svg class="w-5 h-5 text-amber-400 mb-1.5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                <span class="text-xs font-medium text-slate-300">OS Automation</span>
+                <span class="text-[10px] text-slate-500 mt-0.5">Desktop Control</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- CONVERSATION SCREEN -->
+        <div id="view-chat" class="hidden w-full max-w-2xl space-y-4">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+            <h3 class="text-sm font-semibold text-white">Conversation History</h3>
+            <button id="btn-clear-chat" class="text-xs text-blue-400 hover:underline">Clear</button>
+          </div>
+          <div id="chat-messages-container" class="space-y-3 text-xs">
+            <!-- Dynamic messages injected here -->
+          </div>
+        </div>
+
+        <!-- AGENTS SCREEN -->
+        <div id="view-agents" class="hidden w-full max-w-2xl space-y-4">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+            <div>
+              <h3 class="text-sm font-semibold text-white">Multi-Agent Runtime</h3>
+              <p class="text-[11px] text-slate-400">Phase 05 Multi-Agent Engine • DAG Task Pipeline</p>
+            </div>
+            <span class="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded text-xs font-mono">Status: Idle</span>
+          </div>
+          <div id="agents-list-container" class="space-y-2.5 text-xs">
+            <!-- Dynamic agent items -->
+          </div>
+        </div>
+
+        <!-- MEMORY SCREEN -->
+        <div id="view-memory" class="hidden w-full max-w-2xl space-y-4">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+            <div>
+              <h3 class="text-sm font-semibold text-white">Tri-Tier Memory Engine</h3>
+              <p class="text-[11px] text-slate-400">Sliding Window • SQLite Store • sqlite-vec KNN Search</p>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-3 text-xs">
+            <div class="bg-[#111827] border border-slate-800 rounded-lg p-3">
+              <div class="font-semibold text-slate-300 mb-2">User Preferences</div>
+              <ul id="memory-prefs-list" class="space-y-1.5 text-slate-400 text-[11px]"></ul>
+            </div>
+            <div class="bg-[#111827] border border-slate-800 rounded-lg p-3">
+              <div class="font-semibold text-slate-300 mb-2">Learned Facts</div>
+              <ul id="memory-facts-list" class="space-y-1.5 text-slate-400 text-[11px]"></ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- SETTINGS SCREEN -->
+        <div id="view-settings" class="hidden w-full max-w-2xl space-y-4">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+            <h3 class="text-sm font-semibold text-white">Settings</h3>
+            <span class="text-[11px] text-slate-500">Local-first configuration</span>
+          </div>
+          <div class="space-y-3 text-xs">
+            <div class="bg-[#111827] border border-slate-800 rounded-lg p-3 flex justify-between items-center">
+              <div>
+                <div class="font-medium text-slate-200">Start with Windows</div>
+                <div class="text-[10px] text-slate-500">Launch ZARVIS minimized in system tray on boot</div>
+              </div>
+              <input type="checkbox" id="set-auto-start" checked class="rounded bg-slate-800 border-slate-700 text-blue-600 focus:ring-0">
+            </div>
+            <div class="bg-[#111827] border border-slate-800 rounded-lg p-3 flex justify-between items-center">
+              <div>
+                <div class="font-medium text-slate-200">Global Activation Shortcut</div>
+                <div class="text-[10px] text-slate-500">Global hotkey to activate voice assistant</div>
+              </div>
+              <kbd class="px-2 py-1 bg-slate-800 border border-slate-700 rounded text-slate-300 font-mono text-[11px]">Ctrl + Space</kbd>
+            </div>
+            <div class="bg-[#111827] border border-slate-800 rounded-lg p-3 flex justify-between items-center">
+              <div>
+                <div class="font-medium text-slate-200">Audio Voice (Kokoro ONNX)</div>
+                <div class="text-[10px] text-slate-500">Offline speech synthesis voice model</div>
+              </div>
+              <select class="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-slate-300 text-xs">
+                <option>af_heart (Natural English)</option>
+                <option>af_bella (Warm)</option>
+                <option>am_adam (Crisp Male)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- ACTIVITY SCREEN -->
+        <div id="view-activity" class="hidden w-full max-w-2xl space-y-4">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+            <h3 class="text-sm font-semibold text-white">Activity History</h3>
+            <span class="text-[11px] text-slate-500">Real-time audit provenance</span>
+          </div>
+          <div id="activity-full-list" class="space-y-2 text-xs"></div>
+        </div>
+
+      </div>
+
+      <!-- BOTTOM COMPOSER -->
+      <footer class="p-4 border-t border-slate-800/60 bg-[#090D15]/80 flex items-center space-x-3">
+        <div class="relative flex-1">
+          <input 
+            type="text" 
+            id="cmd-input"
+            placeholder="Ask ZARVIS to do something... (e.g., 'Open Visual Studio Code')"
+            class="w-full bg-[#121927] border border-slate-800 focus:border-blue-500 rounded-lg pl-3 pr-20 py-2.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none transition-all"
+          />
+          <div class="absolute right-2.5 top-2.5 flex items-center space-x-1.5 text-slate-500 text-[10px]">
+            <kbd class="px-1 bg-slate-800 border border-slate-700 rounded font-mono">↵ Enter</kbd>
+          </div>
+        </div>
+        <button id="btn-send-cmd" class="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-medium transition-all shadow-sm flex items-center gap-1.5">
+          <span>Send</span>
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+        </button>
+      </footer>
+    </main>
+
+    <!-- RIGHT ACTIVITY PANEL -->
+    <aside class="w-72 bg-[#080C14] rounded-xl border border-slate-800/80 flex flex-col p-3.5 shadow-xl">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800/60">
+        <h3 class="text-xs font-semibold text-slate-300 uppercase tracking-wider">Recent Activity</h3>
+      </div>
+      <div id="activity-stream-container" class="flex-1 overflow-y-auto space-y-2 pt-3 text-xs"></div>
+    </aside>
+
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL: SAFETY APPROVAL DIALOG (Phase 08 Policy Engine)                    -->
+  <!-- ========================================================================= -->
+  <div id="modal-safety-approval" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div class="bg-[#121927] border border-amber-500/50 rounded-2xl p-6 w-full max-w-md shadow-2xl text-xs space-y-4">
+      <div class="flex items-center space-x-3 text-amber-400 font-semibold text-sm">
+        <span class="w-8 h-8 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-lg">⚠️</span>
+        <span>ZARVIS Requires Your Approval</span>
+      </div>
+      <p class="text-slate-300 text-xs leading-relaxed" id="safety-modal-description">
+        The Autonomous Agent requested permission to perform a sensitive operation.
+      </p>
+      <div class="flex items-center justify-end space-x-3 pt-2">
+        <button id="safety-modal-deny" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg font-medium transition-colors">
+          Cancel / Deny
+        </button>
+        <button id="safety-modal-approve" class="px-5 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg font-medium shadow-md transition-all">
+          Approve Action
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../../dist/renderer/app.js"></script>
+</body>
+</html>

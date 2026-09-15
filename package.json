@@ -12,10 +12,12 @@
     "build": "npm run build --workspaces",
     "test:protocol": "npm test --workspace=@jarvis/protocol",
     "test:gateway": "npm test --workspace=@jarvis/node-gateway",
-    "test:node": "npm run test:protocol && npm run test:gateway",
+    "test:desktop": "npm test --workspace=@jarvis/desktop",
+    "test:node": "npm run test:protocol && npm run test:gateway && npm run test:desktop",
     "test:python": ".venv\\Scripts\\pytest tests/python",
     "test": "npm run test:node && npm run test:python",
     "start:gateway": "npm start --workspace=@jarvis/node-gateway",
+    "start:desktop": "npm start --workspace=@jarvis/desktop",
     "start:python": ".venv\\Scripts\\python services/python-core/jarvis/__main__.py",
     "preview": ".venv\\Scripts\\python scripts/preview_demo.py"
   }

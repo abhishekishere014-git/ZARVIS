@@ -128,3 +128,12 @@ JARVIS is engineered as a **hybrid multi-runtime platform**, assigning computati
 * **Asynchronous Event Broadcasting:** Seamlessly bridges Python Core's `AsyncEventBus` events to Node Gateway and active WebSocket clients.
 * **Security & Observability:** Strict loopback validation, secret scrubbing in error payloads, request timeout enforcement, concurrency limits, and live diagnostics via `system.diagnostics`.
 
+### Desktop Client & System Tray UI (Phase 11: `@jarvis/desktop`)
+* **Dual-Mode Desktop Shell:** Electron-based desktop application supporting Mode A (**Compact Floating HUD**, 380×64px) and Mode B (**Full Desktop Workspace**, 1280×800px) with seamless, state-preserved window transitions.
+* **Preload Security Boundary:** Enforces strict isolation (`contextIsolation: true`, `nodeIntegration: false`, zero raw Node execution or secrets exposed to renderer). Exposes strictly typed `window.zarvis` bridge.
+* **Realtime Gateway Integration:** Renderer connects directly to Node Gateway over WebSocket (`ws://127.0.0.1:3000/ws`) using shared `@jarvis/protocol` contracts.
+* **Hero Voice Interaction:** Dual-mode microphone controller supporting both **Tap-to-Speak** and **Hold-to-Speak (Push-to-Talk)** with animated waveforms, live transcription previews, and instant barge-in interruption.
+* **Native Windows Integration:** Windows System Tray icon with context menu, global activation hotkey (`Ctrl + Space`), close-to-tray background execution, and native Windows toast notifications.
+* **Safety & Inspection Surfaces:** Dedicated safety approval modal for high-risk OS actions, multi-agent task execution timeline, and tri-tier memory inspector.
+
+

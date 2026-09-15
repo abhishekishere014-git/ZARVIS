@@ -1,0 +1,21 @@
+{
+  "name": "@jarvis/desktop",
+  "version": "0.1.0",
+  "description": "ZARVIS Windows Desktop Client & Compact Floating HUD",
+  "main": "dist/main/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "electron .",
+    "test": "node --test dist/__tests__/**/*.test.js"
+  },
+  "dependencies": {
+    "@jarvis/protocol": "file:../../packages/protocol",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.10",
+    "@types/ws": "^8.5.10",
+    "electron": "^33.2.1",
+    "typescript": "^5.5.4"
+  }
+}

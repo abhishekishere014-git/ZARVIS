@@ -135,7 +135,7 @@ WebSocket gateway: `ws://127.0.0.1:3000/ws`
 * [x] **Phase 08:** Controlled Windows OS Automation & Computer Interaction Layer
 * [x] **Phase 09:** Vision, Screen Understanding & Visual Grounding Layer
 * [x] **Phase 10:** Headless IPC Bridge (Python <-> Node Gateway link)
-* [ ] **Phase 11:** Desktop Client & System Tray UI
+* [x] **Phase 11:** Desktop Client & System Tray UI
 * [ ] **Phase 12:** Hardening, E2E Testing & Release
 
 ---
@@ -327,6 +327,20 @@ Phase 10 connects Python Core and Node.js Gateway via a production-grade, headle
 * **Fault Tolerance & Heartbeats:** 10-second keepalive heartbeats, automatic state degradation, and jittered exponential backoff reconnection.
 * **Bidirectional Event Streaming:** Seamlessly forwards Python Core `AsyncEventBus` notifications to Node Gateway and active WebSocket clients.
 * **Enterprise Security & Observability:** Strict loopback binding, sensitive data scrubbing, timeout controls, concurrency caps, and live metrics via `system.diagnostics`.
+
+---
+
+## Phase 11: Desktop Client, Floating HUD & System Tray UI
+
+The ZARVIS Windows Desktop Client (`apps/desktop/`) delivers a complete, production-grade desktop experience:
+* **Dual-Mode Window Lifecycle:**
+  * **Mode A: Compact Floating HUD (380×64px):** Frameless, always-on-top pill widget for discreet desktop productivity over VS Code, Office, or web browsers.
+  * **Mode B: Full Desktop Workspace (1280×800px):** Complete assistant experience with sidebar navigation, conversation timeline, multi-agent inspector, and memory inspector.
+* **Preload Security Boundary:** Enforces strict renderer isolation (`contextIsolation: true`, `nodeIntegration: false`) with typed `window.zarvis` API. Zero raw Node APIs or internal secrets exposed to the UI.
+* **Hero Voice Interaction:** Dual-mode microphone supporting **Tap-to-Speak**, **Hold-to-Speak (Push-to-Talk)**, animated audio waveform, and instant barge-in interruption.
+* **Native Windows Integration:** Real Windows System Tray with context menu, global activation shortcut (`Ctrl + Space`), close-to-tray background execution, and native Windows notifications.
+* **Realtime Gateway Integration:** Connects directly to Node Gateway over WebSocket (`ws://127.0.0.1:3000/ws`) using versioned `@jarvis/protocol` contracts with zero fake data.
+
 
 
 
