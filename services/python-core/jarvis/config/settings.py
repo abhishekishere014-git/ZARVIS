@@ -93,7 +93,14 @@ class JarvisSettings(BaseSettings):
     vision_downscale_width: int = Field(default=1920, description="Target width for downscaled screen perception")
     vision_downscale_height: int = Field(default=1080, description="Target height for downscaled screen perception")
 
-
+    # Headless IPC Bridge Configuration (Phase 10)
+    ipc_enabled: bool = Field(default=True, description="Enable headless IPC bridge server")
+    ipc_host: str = Field(default="127.0.0.1", description="Bind address for IPC server (loopback only)")
+    ipc_port: int = Field(default=8765, description="Port for IPC server")
+    ipc_max_message_bytes: int = Field(default=10 * 1024 * 1024, description="Max IPC message size in bytes (10MB)")
+    ipc_request_timeout_sec: float = Field(default=30.0, description="IPC request execution timeout in seconds")
+    ipc_heartbeat_interval_sec: float = Field(default=10.0, description="IPC heartbeat ping interval in seconds")
+    ipc_max_concurrent_requests: int = Field(default=100, description="Max concurrent in-flight IPC requests")
 
     @property
     def is_production(self) -> bool:

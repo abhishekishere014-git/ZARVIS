@@ -10,11 +10,13 @@ import {
   PROTOCOL_VERSION,
 } from "@jarvis/protocol";
 import { getDashboardHtml } from "./dashboard.js";
+import { IPCClient } from "./ipc/index.js";
 
 export class NodeGateway {
   private readonly config: GatewayConfig;
   private readonly logger: Logger;
   private readonly healthMonitor: HealthMonitor;
+  public readonly ipcClient: IPCClient;
   private server: http.Server | null = null;
   private wss: WebSocketServer | null = null;
   private readonly clients = new Set<WebSocket>();
@@ -23,6 +25,35 @@ export class NodeGateway {
     this.config = config;
     this.logger = new Logger("jarvis.gateway", config.logLevel);
     this.healthMonitor = new HealthMonitor();
+    this.ipcClient = new IPCClient(
+      {
+        host: this.config.ipcHost,
+        port: this.config.ipcPort,
+        timeoutMs: this.config.ipcTimeoutMs,
+        reconnectIntervalMs: this.config.ipcReconnectIntervalMs,
+        maxMessageBytes: this.config.ipcMaxMessageBytes,
+      },
+      new Logger("jarvis.gateway.ipc", config.logLevel)
+    );
+
+    // Sync Python Core connectivity with health monitor
+    this.ipcClient.onStateChange((state) => {
+      this.healthMonitor.setPythonCoreConnected(state === "CONNECTED");
+    });
+
+    // Broadcast Python Core events to all active WebSocket clients
+    this.ipcClient.onEvent((event) => {
+      const payload = JSON.stringify(event);
+      for (const client of this.clients) {
+        if (client.readyState === WebSocket.OPEN) {
+          try {
+            client.send(payload);
+          } catch (err) {
+            this.logger.error("Failed to forward event to WebSocket client", undefined, String(err));
+          }
+        }
+      }
+    });
   }
 
   public getHealth(): GatewayHealthReport {
@@ -121,6 +152,12 @@ export class NodeGateway {
         this.logger.info(
           `Node Gateway online at http://${this.config.host}:${this.config.port} (WebSocket at /ws)`
         );
+
+        if (this.config.nodeEnv !== "test") {
+          this.ipcClient.connect().catch((err) => {
+            this.logger.warn(`Initial IPC connection failed: ${err.message}. Auto-reconnect active.`);
+          });
+        }
         resolve();
       });
 
@@ -133,10 +170,13 @@ export class NodeGateway {
   }
 
   public async stop(): Promise<void> {
-    return new Promise((resolve) => {
-      this.logger.info("Stopping Node Gateway...");
-      this.healthMonitor.setGatewayRunning(false);
+    this.logger.info("Stopping Node Gateway...");
+    this.healthMonitor.setGatewayRunning(false);
 
+    // Disconnect IPC client first
+    await this.ipcClient.disconnect();
+
+    return new Promise((resolve) => {
       // Close all connected WebSocket clients
       for (const client of this.clients) {
         if (client.readyState === WebSocket.OPEN) {
@@ -163,7 +203,7 @@ export class NodeGateway {
     });
   }
 
-  private handleClientMessage(ws: WebSocket, raw: string): void {
+  private async handleClientMessage(ws: WebSocket, raw: string): Promise<void> {
     try {
       const parsed = JSON.parse(raw);
       const reqResult = validateRequest(parsed);
@@ -187,8 +227,18 @@ export class NodeGateway {
       const request = reqResult.data!;
       this.logger.debug(`Received request '${request.type}'`, request.id);
 
-      // Future Phase 10 will route this to Python Core via IPC
-      // For Phase 02 foundation, acknowledge protocol receipt
+      // Route over IPC Bridge to Python Core if connected
+      if (this.ipcClient.isConnected()) {
+        try {
+          const response = await this.ipcClient.sendRequest(request);
+          ws.send(JSON.stringify(response));
+          return;
+        } catch (err) {
+          this.logger.error("Error routing request over IPC", request.id, String(err));
+        }
+      }
+
+      // Offline / Local Ack Fallback
       let statusText = "queued_or_handled";
       let msgText = `JARVIS Gateway processed ${request.type} successfully.`;
 

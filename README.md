@@ -305,4 +305,28 @@ The Windows OS Automation subsystem (`services/python-core/jarvis/os/`) enables 
   * Contextual OS state logged into Phase 06 `WorkingBuffer`.
   * Triggerable from Phase 07 Voice pipelines.
 
+---
+
+## Phase 09: Vision, Screen Understanding & Visual Grounding
+
+The Visual Perception subsystem (`services/python-core/jarvis/vision/`) delivers robust, non-intrusive screen understanding and visual element grounding:
+* **Perception-Action Separation:** Grounds coordinates and identifies targets without direct execution privileges.
+* **Hierarchical Perception Pipeline:** Maps visual hierarchy across windows, regions, and UI elements.
+* **Confidence & Ambiguity Guardrails:** Three-tier confidence ratings (`HIGH`, `MEDIUM`, `LOW`) with `TargetAmbiguityError` and `StaleObservationError` protection.
+* **Privacy & Telemetry Redaction:** Automated detection and masking of sensitive password/credential input fields.
+* **ToolRegistry Integration:** Native tools (`vision.screen.analyze`, `vision.element.find`, `vision.target.resolve`).
+
+---
+
+## Phase 10: Headless IPC Bridge (Python Core ↔ Node Gateway)
+
+Phase 10 connects Python Core and Node.js Gateway via a production-grade, headless loopback IPC bridge:
+* **Loopback TCP Transport:** Asynchronous socket communication on `127.0.0.1:8765` using standard library `asyncio` and `node:net` with zero external dependencies.
+* **Newline-Delimited JSON-RPC:** Strict v1.0 protocol conformance (`JarvisRequest`, `JarvisResponse`, `JarvisEvent`) bounded to 10MB frames.
+* **Mandatory Handshake:** Protocol negotiation via `ipc.handshake` before accepting commands.
+* **Fault Tolerance & Heartbeats:** 10-second keepalive heartbeats, automatic state degradation, and jittered exponential backoff reconnection.
+* **Bidirectional Event Streaming:** Seamlessly forwards Python Core `AsyncEventBus` notifications to Node Gateway and active WebSocket clients.
+* **Enterprise Security & Observability:** Strict loopback binding, sensitive data scrubbing, timeout controls, concurrency caps, and live metrics via `system.diagnostics`.
+
+
 

@@ -119,3 +119,12 @@ JARVIS is engineered as a **hybrid multi-runtime platform**, assigning computati
 * **Observation Staleness Guard:** Configurable observation TTL (default 15.0s); interactions against outdated snapshots raise `StaleObservationError`.
 * **Privacy & Boundary Verification:** Automated credential/password field detection and redaction from telemetry; coordinate boundaries validated against desktop dimensions.
 * **ToolRegistry Integration:** Registers `vision.screen.analyze`, `vision.element.find`, and `vision.target.resolve` for seamless multi-agent and voice invocation.
+
+### Headless IPC Bridge (Phase 10: `jarvis.ipc` & `@jarvis/node-gateway/ipc`)
+* **Loopback TCP Transport:** High-performance bidirectional streaming IPC operating over loopback TCP (`127.0.0.1:8765`), utilizing standard library `asyncio` and `node:net` with zero external dependencies.
+* **Newline-Delimited JSON-RPC:** Strict v1.0 schema compliance (`JarvisRequest`, `JarvisResponse`, `JarvisEvent`) with 10MB message bounding.
+* **Mandatory Handshake:** Explicit protocol negotiation (`ipc.handshake`) before accepting operational commands.
+* **Resilient State Machine & Reconnection:** Node client manages state transitions (`CONNECTED`, `DEGRADED`, `RECONNECTING`), heartbeat keepalives, and jittered exponential backoff reconnection.
+* **Asynchronous Event Broadcasting:** Seamlessly bridges Python Core's `AsyncEventBus` events to Node Gateway and active WebSocket clients.
+* **Security & Observability:** Strict loopback validation, secret scrubbing in error payloads, request timeout enforcement, concurrency limits, and live diagnostics via `system.diagnostics`.
+
