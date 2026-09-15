@@ -112,6 +112,9 @@ export class ProcessSupervisor {
    * Checks if a process with the given PID is actively running.
    */
   public isProcessRunning(pid: number): boolean {
+    if (!Number.isInteger(pid) || pid <= 0 || pid > 2147483647) {
+      return false;
+    }
     try {
       if (process.platform === "win32") {
         const stdout = execSync(`tasklist /FI "PID eq ${pid}" /NH`, { encoding: "utf-8" });
@@ -129,7 +132,9 @@ export class ProcessSupervisor {
    * Recursively terminates a process and all of its child processes to prevent orphans.
    */
   public killProcessTree(pid: number): void {
-    if (!pid || pid <= 0) return;
+    if (!Number.isInteger(pid) || pid <= 0 || pid > 2147483647) {
+      return;
+    }
     try {
       if (process.platform === "win32") {
         execSync(`taskkill /pid ${pid} /T /F`, { stdio: "ignore" });

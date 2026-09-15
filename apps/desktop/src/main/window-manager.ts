@@ -58,7 +58,22 @@ export class WindowManager {
         contextIsolation: true,
         nodeIntegration: false,
         sandbox: true,
+        webSecurity: true,
+        allowRunningInsecureContent: false,
+        navigateOnDragDrop: false,
       },
+    });
+
+    // Navigation lockdown: prevent navigating away from local package
+    this.window.webContents.on("will-navigate", (event, url) => {
+      if (!url.startsWith("file://")) {
+        event.preventDefault();
+      }
+    });
+
+    // Deny popup / new window creation
+    this.window.webContents.setWindowOpenHandler(() => {
+      return { action: "deny" };
     });
 
     this.window.loadFile(this.htmlPath);

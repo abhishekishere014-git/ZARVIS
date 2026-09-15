@@ -124,7 +124,11 @@ export class NodeGateway {
         res.end(JSON.stringify({ error: "Not Found" }));
       });
 
-      this.wss = new WebSocketServer({ server: this.server, path: "/ws" });
+      this.wss = new WebSocketServer({
+        server: this.server,
+        path: "/ws",
+        maxPayload: 10 * 1024 * 1024,
+      });
 
       this.wss.on("connection", (ws: WebSocket, req) => {
         const clientIp = req.socket.remoteAddress;
@@ -204,6 +208,22 @@ export class NodeGateway {
   }
 
   private async handleClientMessage(ws: WebSocket, raw: string): Promise<void> {
+    if (raw.length > 10 * 1024 * 1024) {
+      const errorResponse: JarvisResponse = {
+        id: "unknown",
+        type: "error.payload_too_large",
+        version: PROTOCOL_VERSION,
+        timestamp: new Date().toISOString(),
+        success: false,
+        error: {
+          code: "PAYLOAD_TOO_LARGE",
+          message: "Request payload exceeds maximum allowed size of 10MB",
+        },
+      };
+      ws.send(JSON.stringify(errorResponse));
+      return;
+    }
+
     try {
       const parsed = JSON.parse(raw);
       const reqResult = validateRequest(parsed);
