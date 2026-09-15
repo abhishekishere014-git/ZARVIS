@@ -230,7 +230,8 @@ export class NodeGateway {
       // Route over IPC Bridge to Python Core if connected
       if (this.ipcClient.isConnected()) {
         try {
-          const response = await this.ipcClient.sendRequest(request);
+          const timeoutMs = request.type === "agent.execute" ? 120000 : undefined;
+          const response = await this.ipcClient.sendRequest(request, timeoutMs);
           ws.send(JSON.stringify(response));
           return;
         } catch (err) {
@@ -238,21 +239,24 @@ export class NodeGateway {
         }
       }
 
-      // Offline / Local Ack Fallback
-      let statusText = "queued_or_handled";
-      let msgText = `JARVIS Gateway processed ${request.type} successfully.`;
-
-      if (request.type === "system.ping") {
-        statusText = "pong";
-        msgText = "PONG! JARVIS Hybrid Core and Gateway are fully operational.";
-      } else if (request.type === "agent.execute") {
-        statusText = "dispatched";
-        msgText = `Mission Goal accepted: "${request.payload?.goal || "General Mission"}". 10 Autonomous Agents engaged (Planner -> DAG generated -> Waves ready).`;
-      } else if (request.type === "tools.list") {
-        statusText = "ready";
-        msgText = "Active Tools: generate_docx, generate_xlsx, generate_pptx, generate_pdf, FileSystemSandbox.";
+      // Offline handling: do NOT fake agent/vision/tool execution when Python Core is offline
+      if (request.type !== "system.ping") {
+        const offlineResponse: JarvisResponse = {
+          id: request.id,
+          type: request.type,
+          version: PROTOCOL_VERSION,
+          timestamp: new Date().toISOString(),
+          success: false,
+          error: {
+            code: "CORE_OFFLINE",
+            message: `Cannot execute '${request.type}': Python Core IPC backend is currently offline.`,
+          },
+        };
+        ws.send(JSON.stringify(offlineResponse));
+        return;
       }
 
+      // Local Ping Ack Fallback
       const ackResponse: JarvisResponse = {
         id: request.id,
         type: request.type,
@@ -261,8 +265,8 @@ export class NodeGateway {
         success: true,
         payload: {
           acknowledged: true,
-          status: statusText,
-          message: msgText,
+          status: "pong",
+          message: "PONG! JARVIS Gateway is operational (Python Core offline).",
           details: request.payload,
         },
       };

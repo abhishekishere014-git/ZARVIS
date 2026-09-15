@@ -85,4 +85,67 @@ describe("Desktop Client Real End-to-End Smoke Test", () => {
     client.disconnect();
     await new Promise<void>((resolve) => wss.close(() => resolve()));
   });
+
+  it("should complete real agent.execute and vision.scan roundtrips", async () => {
+    const wss = new WebSocketServer({ port: 0 });
+    await new Promise<void>((resolve) => wss.on("listening", () => resolve()));
+    const port = (wss.address() as any).port;
+
+    wss.on("connection", (ws) => {
+      ws.on("message", (raw) => {
+        const parsed = JSON.parse(raw.toString());
+        if (parsed.type === "agent.execute") {
+          const resp: JarvisResponse = {
+            id: parsed.id,
+            type: "agent.execute",
+            version: PROTOCOL_VERSION,
+            timestamp: new Date().toISOString(),
+            success: true,
+            payload: {
+              run_id: "run_e2e_456",
+              status: "completed",
+              summary: "Executive summary document generated and verified in sandbox.",
+              task_statistics: { total: 4, completed: 4 },
+            },
+          };
+          ws.send(JSON.stringify(resp));
+        } else if (parsed.type === "vision.scan") {
+          const resp: JarvisResponse = {
+            id: parsed.id,
+            type: "vision.scan",
+            version: PROTOCOL_VERSION,
+            timestamp: new Date().toISOString(),
+            success: true,
+            payload: {
+              observation_id: "obs_e2e_789",
+              resolution: { width: 1920, height: 1080 },
+              elements_count: 14,
+              interactive_count: 8,
+              active_window_title: "VS Code",
+            },
+          };
+          ws.send(JSON.stringify(resp));
+        }
+      });
+    });
+
+    const store = new DesktopStore();
+    const client = new GatewayConnection(`ws://127.0.0.1:${port}`);
+    await client.connect();
+
+    // Test agent.execute
+    const agentResp = await client.sendRequest("agent.execute", { goal: "Generate report" });
+    assert.equal(agentResp.success, true);
+    assert.equal(agentResp.payload?.run_id, "run_e2e_456");
+    assert.equal(agentResp.payload?.status, "completed");
+
+    // Test vision.scan
+    const visionResp = await client.sendRequest("vision.scan", { monitor_index: 0 });
+    assert.equal(visionResp.success, true);
+    assert.equal(visionResp.payload?.interactive_count, 8);
+    assert.equal(visionResp.payload?.active_window_title, "VS Code");
+
+    client.disconnect();
+    await new Promise<void>((resolve) => wss.close(() => resolve()));
+  });
 });

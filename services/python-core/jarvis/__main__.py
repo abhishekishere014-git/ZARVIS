@@ -3,6 +3,7 @@
 import asyncio
 import signal
 import sys
+from jarvis.bootstrap import bootstrap_system
 from jarvis.config.settings import JarvisSettings
 from jarvis.core.engine import JarvisEngine
 from jarvis.logging.logger import setup_logging
@@ -13,7 +14,7 @@ async def main() -> None:
     logger = setup_logging(level=settings.log_level, json_format=False)
     logger.info("Initializing JARVIS Python Core Daemon...")
 
-    engine = JarvisEngine(settings=settings)
+    engine, _ = bootstrap_system(settings=settings)
 
     loop = asyncio.get_running_loop()
 

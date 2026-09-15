@@ -2,6 +2,8 @@
  * Windows System Tray integration for ZARVIS.
  */
 
+import * as fs from "node:fs";
+import * as path from "node:path";
 import { Menu, Tray, nativeImage, app } from "electron";
 import { WindowManager } from "./window-manager";
 
@@ -16,8 +18,7 @@ export class SystemTrayManager {
   ) {}
 
   public createTray(): Tray {
-    // Generate a simple circular 16x16 icon programmatically if file not found
-    const icon = this.createDefaultIcon();
+    const icon = this.loadTrayIcon();
     this.tray = new Tray(icon);
     this.tray.setToolTip(`ZARVIS — ${this.statusText}`);
 
@@ -99,12 +100,21 @@ export class SystemTrayManager {
     this.tray.setContextMenu(contextMenu);
   }
 
-  private createDefaultIcon(): Electron.NativeImage {
-    // 16x16 transparent PNG with a cyan/blue circle dot
-    const size = 16;
-    const canvas = nativeImage.createEmpty();
-    // Return empty image or 16x16 standard icon
-    return canvas;
+  private loadTrayIcon(): Electron.NativeImage {
+    const candidatePaths = [
+      path.join(__dirname, "../../assets/tray.png"),
+      path.join(__dirname, "../assets/tray.png"),
+      path.join(process.cwd(), "apps/desktop/assets/tray.png"),
+      path.join(process.cwd(), "assets/tray.png"),
+    ];
+
+    for (const p of candidatePaths) {
+      if (fs.existsSync(p)) {
+        return nativeImage.createFromPath(p);
+      }
+    }
+
+    return nativeImage.createEmpty();
   }
 
   public destroy(): void {

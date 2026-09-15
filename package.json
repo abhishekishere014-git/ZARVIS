@@ -19,6 +19,8 @@
     "start:gateway": "npm start --workspace=@jarvis/node-gateway",
     "start:desktop": "npm start --workspace=@jarvis/desktop",
     "start:python": ".venv\\Scripts\\python services/python-core/jarvis/__main__.py",
+    "pack:desktop": "npm run pack --workspace=@jarvis/desktop",
+    "dist:desktop": "npm run dist --workspace=@jarvis/desktop",
     "preview": ".venv\\Scripts\\python scripts/preview_demo.py"
   }
 }

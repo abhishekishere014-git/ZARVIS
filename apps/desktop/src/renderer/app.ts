@@ -169,6 +169,50 @@ export class ZarvisApp {
     window.zarvis.voice.onActivateVoice(() => {
       this.handleMicTap();
     });
+
+    window.zarvis.voice.onMuteToggle?.(() => {
+      this.handleMuteToggle();
+    });
+
+    window.zarvis.system.onRestartSubsystem?.((subsystem) => {
+      this.handleRestartSubsystem(subsystem);
+    });
+  }
+
+  private isMuted = false;
+
+  public handleMuteToggle(): void {
+    this.isMuted = !this.isMuted;
+    const status = this.isMuted ? "Muted" : "Ready";
+    window.zarvis?.tray.updateStatus(status, this.isMuted ? "amber" : "green");
+    window.zarvis?.notifications.show(
+      "Microphone",
+      this.isMuted ? "Microphone muted" : "Microphone active",
+      this.isMuted ? "warning" : "info"
+    );
+    this.store.addActivity({
+      id: `act_${Date.now()}`,
+      title: this.isMuted ? "Microphone Muted" : "Microphone Unmuted",
+      category: "system",
+      description: `Input capture set to ${this.isMuted ? "MUTED" : "ACTIVE"} via system tray`,
+      timestamp: new Date().toLocaleTimeString(),
+    });
+  }
+
+  public async handleRestartSubsystem(subsystem: string): Promise<void> {
+    window.zarvis?.notifications.show(
+      "Subsystem Refresh",
+      `Refreshing connection to ${subsystem}...`,
+      "info"
+    );
+    await this.refreshSystemHealth();
+    this.store.addActivity({
+      id: `act_${Date.now()}`,
+      title: `Subsystem Refresh: ${subsystem}`,
+      category: "system",
+      description: `Re-pinged and verified health for ${subsystem}`,
+      timestamp: new Date().toLocaleTimeString(),
+    });
   }
 
   private setupGatewayListeners(): void {
@@ -246,11 +290,22 @@ export class ZarvisApp {
     window.zarvis?.voice.notifyStateChange("Thinking...");
     window.zarvis?.tray.updateStatus("Thinking...");
 
-    // Send voice recognition or mock request through Gateway
+    if (this.isMuted) {
+      this.store.setTranscription("Microphone is muted.");
+      this.store.setAssistantState("IDLE");
+      return;
+    }
+
+    // Genuinely invoke Voice Pipeline over Gateway
     try {
-      const resp = await this.gateway.sendRequest("system.ping", { source: "voice" });
-      if (resp.success) {
-        this.startSpeaking("I am online and ready to assist your desktop workflow.");
+      const resp = await this.gateway.sendRequest("voice.interact", {
+        text: "Voice interaction triggered from desktop client",
+      });
+      if (resp.success && resp.payload) {
+        const payload = resp.payload as Record<string, any>;
+        const speechText = payload.text || "Voice pipeline ready and operational.";
+        this.store.setTranscription(speechText);
+        this.startSpeaking(speechText);
       } else {
         this.store.setAssistantState("IDLE");
       }
@@ -265,17 +320,47 @@ export class ZarvisApp {
     window.zarvis?.voice.notifyStateChange("Speaking...");
     window.zarvis?.tray.updateStatus("Speaking...");
 
-    // Return to IDLE after simulated speech duration
+    // Use native speech synthesis in Chromium/Electron for real spoken audio
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      try {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 1.0;
+        utterance.onend = () => {
+          if (this.store.getState().assistantState === "SPEAKING") {
+            this.store.setAssistantState("IDLE");
+            window.zarvis?.voice.notifyStateChange("Ready");
+            window.zarvis?.tray.updateStatus("Ready");
+          }
+        };
+        utterance.onerror = () => {
+          this.store.setAssistantState("IDLE");
+        };
+        window.speechSynthesis.speak(utterance);
+        return;
+      } catch {
+        // Fallback to duration timeout
+      }
+    }
+
+    const durationMs = Math.max(2000, Math.min(text.length * 60, 7000));
     setTimeout(() => {
       if (this.store.getState().assistantState === "SPEAKING") {
         this.store.setAssistantState("IDLE");
         window.zarvis?.voice.notifyStateChange("Ready");
         window.zarvis?.tray.updateStatus("Ready");
       }
-    }, 4000);
+    }, durationMs);
   }
 
   public stopSpeaking(): void {
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch {
+        // ignore
+      }
+    }
     this.store.setAssistantState("IDLE");
   }
 
@@ -302,25 +387,40 @@ export class ZarvisApp {
     this.store.setAssistantState("THINKING");
 
     try {
-      const resp = await this.gateway.sendRequest("system.ping", { command: commandText });
+      // Genuinely dispatch to Autonomous Multi-Agent Runtime via Gateway
+      const resp = await this.gateway.sendRequest("agent.execute", { goal: commandText });
 
-      this.store.addMessage({
-        id: `msg_a_${Date.now()}`,
-        sender: "assistant",
-        text: `Understood: "${commandText}". Executing task plan via autonomous agents.`,
-        timestamp: new Date().toLocaleTimeString(),
-      });
+      if (resp.success && resp.payload) {
+        const payload = resp.payload as Record<string, any>;
+        const summary = payload.summary || `Goal completed successfully.`;
+        const stats = payload.task_statistics ? ` (${payload.task_statistics.completed ?? 0}/${payload.task_statistics.total ?? 0} tasks)` : "";
 
-      this.store.addMessage({
-        id: `msg_t_${Date.now()}`,
-        sender: "tool",
-        text: "Task dispatched to Python Core engine",
-        timestamp: new Date().toLocaleTimeString(),
-        toolName: "core.engine.dispatch",
-        toolStatus: "SUCCESS",
-      });
+        this.store.addMessage({
+          id: `msg_a_${Date.now()}`,
+          sender: "assistant",
+          text: summary + stats,
+          timestamp: new Date().toLocaleTimeString(),
+        });
 
-      this.store.setAssistantState("IDLE");
+        this.store.addActivity({
+          id: `act_${Date.now()}`,
+          title: "Task Completed",
+          category: "agent",
+          description: `Run ID: ${payload.run_id || "done"}. ${summary.slice(0, 80)}`,
+          timestamp: new Date().toLocaleTimeString(),
+        });
+
+        this.store.setAssistantState("IDLE");
+      } else {
+        const errMsg = resp.error?.message || "Execution failed";
+        this.store.addMessage({
+          id: `msg_err_${Date.now()}`,
+          sender: "assistant",
+          text: `Task failed: ${errMsg}`,
+          timestamp: new Date().toLocaleTimeString(),
+        });
+        this.store.setAssistantState("ERROR");
+      }
     } catch (err: any) {
       this.store.addMessage({
         id: `msg_err_${Date.now()}`,
@@ -343,13 +443,45 @@ export class ZarvisApp {
 
     this.store.setAssistantState("THINKING");
     try {
-      const resp = await this.gateway.sendRequest("system.ping", { action: "vision_scan" });
-      this.store.setAssistantState("IDLE");
-      window.zarvis?.notifications.show(
-        "Screen Grounding",
-        "Primary monitor analyzed. Interactive elements mapped.",
-        "success"
-      );
+      // Genuinely dispatch to Phase 09 Vision Subsystem via Gateway
+      const resp = await this.gateway.sendRequest("vision.scan", { monitor_index: 0 });
+
+      if (resp.success && resp.payload) {
+        const payload = resp.payload as Record<string, any>;
+        const elementsCount = payload.elements_count ?? 0;
+        const interactiveCount = payload.interactive_count ?? 0;
+        const res = payload.resolution || { width: 1920, height: 1080 };
+        const windowTitle = payload.active_window_title || "Desktop";
+
+        this.store.addActivity({
+          id: `act_vis_res_${Date.now()}`,
+          title: "Screen Analysis Complete",
+          category: "vision",
+          description: `Active: "${windowTitle}" | ${res.width}x${res.height} | ${elementsCount} elements mapped (${interactiveCount} interactive)`,
+          timestamp: new Date().toLocaleTimeString(),
+        });
+
+        this.store.addMessage({
+          id: `msg_vis_${Date.now()}`,
+          sender: "assistant",
+          text: `Screen visual analysis complete (${res.width}x${res.height}). Active window: "${windowTitle}". Identified ${elementsCount} UI elements with ${interactiveCount} actionable interactive targets mapped.`,
+          timestamp: new Date().toLocaleTimeString(),
+        });
+
+        this.store.setAssistantState("IDLE");
+        window.zarvis?.notifications.show(
+          "Screen Grounding",
+          `Mapped ${interactiveCount} interactive elements on ${res.width}x${res.height} display.`,
+          "success"
+        );
+      } else {
+        this.store.setAssistantState("IDLE");
+        window.zarvis?.notifications.show(
+          "Vision Scan Failed",
+          resp.error?.message || "Could not analyze screen",
+          "error"
+        );
+      }
     } catch {
       this.store.setAssistantState("IDLE");
     }

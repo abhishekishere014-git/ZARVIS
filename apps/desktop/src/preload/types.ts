@@ -17,6 +17,7 @@ export interface ZarvisWindowApi {
 export interface ZarvisVoiceBridgeApi {
   notifyStateChange: (state: string) => void;
   onActivateVoice: (callback: () => void) => () => void;
+  onMuteToggle?: (callback: () => void) => () => void;
 }
 
 export interface ZarvisTrayBridgeApi {
@@ -30,6 +31,7 @@ export interface ZarvisNotificationApi {
 export interface ZarvisSystemBridgeApi {
   getGatewayUrl: () => Promise<string>;
   getVersion: () => string;
+  onRestartSubsystem?: (callback: (subsystem: string) => void) => () => void;
 }
 
 export interface ZarvisBridgeApi {

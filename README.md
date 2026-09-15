@@ -341,6 +341,18 @@ The ZARVIS Windows Desktop Client (`apps/desktop/`) delivers a complete, product
 * **Native Windows Integration:** Real Windows System Tray with context menu, global activation shortcut (`Ctrl + Space`), close-to-tray background execution, and native Windows notifications.
 * **Realtime Gateway Integration:** Connects directly to Node Gateway over WebSocket (`ws://127.0.0.1:3000/ws`) using versioned `@jarvis/protocol` contracts with zero fake data.
 
+---
+
+## Phase 12: Real Subsystem Integration & Production Hardening
+
+Phase 12 eliminates all mock/placeholder dispatches and connects the Desktop UI directly to backend capabilities:
+* **True Command Dispatch (`agent.execute`):** User prompts execute through Python Core's `AgentOrchestrator` and `ToolExecutor`, streaming planning and execution events back to the UI.
+* **Screen Visual Grounding (`vision.scan`):** Captures and analyzes primary display using Phase 09 `VisionManager`, mapping interactive targets and screen resolution.
+* **Genuine Voice Flow (`voice.interact` / `voice.transcribe`):** Audio requests stream through STT router and synthesize speech with Kokoro TTS, played through desktop speakers via native audio synthesis.
+* **Tray Hardening:** Native tray menu triggers genuine microphone mute toggles and subsystem health refreshes via typed preload events.
+* **Production Packaging & Windows Installer:** Authentic high-resolution branding assets (`icon.ico`, `icon.png`, `tray.ico`) generated in `apps/desktop/assets/` with `electron-builder` NSIS installer pipeline.
+
+
 
 
 

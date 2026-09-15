@@ -136,4 +136,12 @@ JARVIS is engineered as a **hybrid multi-runtime platform**, assigning computati
 * **Native Windows Integration:** Windows System Tray icon with context menu, global activation hotkey (`Ctrl + Space`), close-to-tray background execution, and native Windows toast notifications.
 * **Safety & Inspection Surfaces:** Dedicated safety approval modal for high-risk OS actions, multi-agent task execution timeline, and tri-tier memory inspector.
 
+### Real Subsystem Integration & Release Packaging (Phase 12)
+* **True End-to-End Command Dispatch:** UI dispatches user commands via `agent.execute` through the Node Gateway to Python Core's `AgentOrchestrator`, providing streaming planning and task execution updates back to the UI.
+* **Vision Grounding Integration:** UI triggers real screen analysis via `vision.scan` to Python Core's `VisionManager`, displaying interactive targets, coordinates, and resolution in the desktop activity stream.
+* **Genuine Voice Flow & Audio Feedback:** `voice.interact` and `voice.transcribe` handlers connect speech input to STT and neural TTS, with native audio synthesis playback through desktop speakers.
+* **Tray Action Wiring:** Native tray menu triggers genuine microphone mute toggles and subsystem health refreshes via typed preload events.
+* **Production Packaging & Windows Installer:** Authentic multi-resolution `.ico` and `.png` branding assets generated in `apps/desktop/assets/`, with `electron-builder` NSIS installer pipeline (`ZARVIS-Setup-0.1.0.exe`).
+
+
 

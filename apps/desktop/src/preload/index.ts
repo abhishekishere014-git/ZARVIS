@@ -28,6 +28,11 @@ const api: ZarvisBridgeApi = {
       ipcRenderer.on("zarvis:voice:activate", listener);
       return () => ipcRenderer.removeListener("zarvis:voice:activate", listener);
     },
+    onMuteToggle: (callback) => {
+      const listener = () => callback();
+      ipcRenderer.on("zarvis:voice:muteToggle", listener);
+      return () => ipcRenderer.removeListener("zarvis:voice:muteToggle", listener);
+    },
   },
   tray: {
     updateStatus: (statusText, stateColor) =>
@@ -40,6 +45,11 @@ const api: ZarvisBridgeApi = {
   system: {
     getGatewayUrl: () => ipcRenderer.invoke("zarvis:system:getGatewayUrl"),
     getVersion: () => "1.0.0",
+    onRestartSubsystem: (callback) => {
+      const listener = (_: any, subsystem: string) => callback(subsystem);
+      ipcRenderer.on("zarvis:system:restartSubsystem", listener);
+      return () => ipcRenderer.removeListener("zarvis:system:restartSubsystem", listener);
+    },
   },
 };
 

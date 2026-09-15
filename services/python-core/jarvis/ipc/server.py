@@ -30,6 +30,7 @@ from jarvis.ipc.models import (
     IPCDiagnostics,
 )
 from jarvis.ipc.router import IPCRouter
+from jarvis.ipc.subsystems import SubsystemRegistry
 
 logger = logging.getLogger("jarvis.ipc.server")
 
@@ -43,6 +44,7 @@ class IPCServer:
         port: int = 8765,
         router: Optional[IPCRouter] = None,
         event_bus: Optional[AsyncEventBus] = None,
+        subsystems: Optional[SubsystemRegistry] = None,
         max_message_bytes: int = 10 * 1024 * 1024,
         request_timeout_sec: float = 30.0,
         max_concurrent_requests: int = 100,
@@ -54,6 +56,7 @@ class IPCServer:
         self.port = port
         self.router = router or IPCRouter()
         self.event_bus = event_bus
+        self.subsystems = subsystems
         self.max_message_bytes = max_message_bytes
         self.request_timeout_sec = request_timeout_sec
         self.max_concurrent_requests = max_concurrent_requests
@@ -70,6 +73,10 @@ class IPCServer:
 
         # Register diagnostics handler in router
         self.router.register_handler("system.diagnostics", self._handle_diagnostics)
+
+        # Register subsystem handlers if provided
+        if self.subsystems:
+            self.subsystems.register_handlers(self.router)
 
     @property
     def state(self) -> IPCConnectionState:
