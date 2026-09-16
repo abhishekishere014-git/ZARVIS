@@ -1,15 +1,23 @@
-# JARVIS — Modular Hybrid AI Assistant Platform
+# ZARVIS — Local-First Intelligent Windows Desktop Assistant
 
-JARVIS is a long-term, modular AI desktop assistant platform combining conversational AI, voice pipelines, computer control, automation, memory, developer tools, and autonomous agent loops.
+[![Release](https://img.shields.io/badge/release-v0.1.0-blue.svg)](https://github.com/abhishekishere014-git/ZARVIS/releases)
+[![Tests](https://img.shields.io/badge/tests-475%2F475%20passing-brightgreen.svg)](https://github.com/abhishekishere014-git/ZARVIS)
+[![Platform](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011%20x64-0078d7.svg)](https://github.com/abhishekishere014-git/ZARVIS)
+[![Python](https://img.shields.io/badge/python-3.12%2B-yellow.svg)](https://python.org)
+[![Node](https://img.shields.io/badge/node-20%2B%20%7C%2022-green.svg)](https://nodejs.org)
+[![Electron](https://img.shields.io/badge/electron-33.2.1-47848F.svg)](https://electronjs.org)
+[![License](https://img.shields.io/badge/license-MIT-lightgrey.svg)](LICENSE)
+
+**ZARVIS** (Zero-latency Adaptive Real-time Voice & Intelligence System) is a production-grade, local-first intelligent Windows desktop assistant combining real-time neural voice, screen understanding, multi-agent planning, Windows OS automation, persistent memory, and a glassmorphic floating HUD + system tray interface.
 
 ---
 
 ## Engineering Discipline & Governance
 
-JARVIS is built under strict **Software Development Lifecycle (SDLC) governance**:
+ZARVIS is built under strict **Software Development Lifecycle (SDLC) governance**:
 > **"Requirements first. Design second. Code third. Verification always."**
 
-Every phase adheres to the **10 Mandatory Quality Gates** codified in [ENGINEERING_STANDARDS.md](file:///c:/ZARVIS/docs/ENGINEERING_STANDARDS.md). Code is never assumed correct without automated verification, security audits, and real runtime execution.
+Every phase adheres to the **Mandatory Quality Gates** codified in [ENGINEERING_STANDARDS.md](file:///c:/ZARVIS/docs/ENGINEERING_STANDARDS.md). Every capability is backed by real execution, security confinement, and automated tests.
 
 ---
 
