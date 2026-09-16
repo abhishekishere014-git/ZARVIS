@@ -97,7 +97,7 @@ export class DesktopStore {
           "Theme: Dark Obsidian Slate",
         ],
         facts: [
-          "Project root: C:\\ZARVIS",
+          "Workspace: Local Windows Desktop",
           "Operating System: Windows 11",
           "Local-first hybrid core architecture",
         ],

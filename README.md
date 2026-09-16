@@ -136,7 +136,7 @@ WebSocket gateway: `ws://127.0.0.1:3000/ws`
 * [x] **Phase 09:** Vision, Screen Understanding & Visual Grounding Layer
 * [x] **Phase 10:** Headless IPC Bridge (Python <-> Node Gateway link)
 * [x] **Phase 11:** Desktop Client & System Tray UI
-* [ ] **Phase 12:** Hardening, E2E Testing & Release
+* [x] **Phase 12:** Hardening, E2E Testing & Production Windows Release (12.1 → 12.8 Complete)
 
 ---
 
@@ -343,16 +343,42 @@ The ZARVIS Windows Desktop Client (`apps/desktop/`) delivers a complete, product
 
 ---
 
-## Phase 12: Real Subsystem Integration & Production Hardening
+## Phase 12: Production Hardening, Quality Gates & Release
 
-Phase 12 eliminates all mock/placeholder dispatches and connects the Desktop UI directly to backend capabilities:
-* **True Command Dispatch (`agent.execute`):** User prompts execute through Python Core's `AgentOrchestrator` and `ToolExecutor`, streaming planning and execution events back to the UI.
-* **Screen Visual Grounding (`vision.scan`):** Captures and analyzes primary display using Phase 09 `VisionManager`, mapping interactive targets and screen resolution.
-* **Genuine Voice Flow (`voice.interact` / `voice.transcribe`):** Audio requests stream through STT router and synthesize speech with Kokoro TTS, played through desktop speakers via native audio synthesis.
-* **Tray Hardening:** Native tray menu triggers genuine microphone mute toggles and subsystem health refreshes via typed preload events.
-* **Production Packaging & Windows Installer:** Authentic high-resolution branding assets (`icon.ico`, `icon.png`, `tray.ico`) generated in `apps/desktop/assets/` with `electron-builder` NSIS installer pipeline.
+Phase 12 enforces 8 strict production quality gates transforming ZARVIS into a release-ready Windows desktop product:
 
+* **12.1 — Real Integration & Placeholder Elimination:**
+  * Replaced all mock/simulated paths with real backend pipelines (`agent.execute`, `voice.interact`, `vision.scan`).
+  * Real-time event streaming (`agent.planning`, `tool.executed`, `agent.completed`) reflected dynamically in UI feeds.
+* **12.2 — Desktop Runtime & Process Lifecycle Hardening:**
+  * `ProcessSupervisor` with single-instance application lock, stale PID cleanup, and recursive process tree termination (`taskkill /pid ... /T /F`).
+  * Prevents orphan/zombie Python Core and Node Gateway processes across reloads, crashes, and shutdowns.
+  * System tray lifecycle with 9 verified operations and notification rate limiting.
+* **12.3 — Final Security Hardening:**
+  * Strict Content Security Policy (CSP) restricting scripts, styles, media, and WebSocket connections to loopback.
+  * Electron window lockdown (`contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`, `webSecurity: true`, `setWindowOpenHandler` denial).
+  * Gateway WebSocket 10MB payload size limits and PID validation against command injection.
+* **12.4 — Reliability, Reconnect & Crash Recovery:**
+  * Jittered exponential backoff reconnect algorithm ($\min(10\text{s}, 1\text{s} \times 2^{\text{attempt}-1}) + \text{jitter}$).
+  * Fail-fast in-flight request rejection (`CONNECTION_CLOSED`, `GATEWAY_OFFLINE`) and request timeout guards (`REQUEST_TIMEOUT`).
+  * Zero frozen UI states invariant: assistant always safely recovers to `IDLE` on task failure, mic error, or backend offline.
+* **12.5 — Complete End-to-End QA:**
+  * Automated E2E test suite covering 14 user workflows: Text Command, Tap-to-Speak, Hold-to-Speak, Barge-In, Stop/Halt, Vision Grounding, OS Safety Policies, Memory without Secrets, Multi-Agent Telemetry, Compact HUD mode, and System Tray actions.
+* **12.6 — Production Windows Packaging:**
+  * Packaged via `electron-builder` into standalone unpacked binaries (`apps/desktop/release/win-unpacked/`) and NSIS installer (`apps/desktop/release/ZARVIS-Setup-0.1.0.exe`).
+  * Custom Windows branding assets (`assets/icon.ico`, `assets/icon.png`, `assets/tray.ico`, `assets/tray.png`).
+  * Dynamic production resource resolution relative to `process.resourcesPath` with zero reliance on developer paths (`C:\ZARVIS`).
+* **12.7 — Clean Windows Installation QA:**
+  * Verified Start Menu shortcuts, Desktop shortcuts, Add/Remove Programs registration, clean uninstaller (`Uninstall ZARVIS.exe`), and developer-path independence.
+* **12.8 — Final Release & Verification:**
+  * 475 / 475 automated tests passing (0 failures, 0 flaky) across the complete monorepo.
+  * Synchronized across `origin/master` and `origin/main`.
 
+### Production Installer Artifacts
 
-
-
+* **Installer Filename:** `ZARVIS-Setup-0.1.0.exe`
+* **Installer Exact Size:** `80,705,198 bytes` (~76.96 MB)
+* **SHA-256 Checksum:** `DC080760C2604BFAABC48AFC029EC9E18FA3DB90CDC7C671A73E8C82DF22E208`
+* **Unpacked Executable:** `release/win-unpacked/ZARVIS.exe` (188,889,088 bytes, v0.1.0)
+* **Architecture:** Windows 10 / 11 64-bit (x64)
+* **Status:** **Production Ready**

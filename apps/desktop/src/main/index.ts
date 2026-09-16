@@ -22,28 +22,43 @@ if (!gotTheLock) {
   let hotkeyManager: HotkeyManager | null = null;
   let supervisor: ProcessSupervisor | null = null;
 
-  const projectRoot = path.resolve(__dirname, "../../..");
+  const isDev = !app.isPackaged;
+  const projectRoot = isDev ? path.resolve(__dirname, "../../..") : process.resourcesPath;
   const preloadPath = path.join(__dirname, "../preload/index.js");
   const htmlPath = path.join(__dirname, "../renderer/index.html");
 
   const gatewayUrl = process.env.GATEWAY_URL || "ws://127.0.0.1:3000/ws";
 
+  const pythonExecutable = isDev
+    ? (process.platform === "win32"
+        ? path.join(projectRoot, ".venv", "Scripts", "python.exe")
+        : path.join(projectRoot, ".venv", "bin", "python"))
+    : (process.platform === "win32"
+        ? path.join(process.resourcesPath, "python", "python.exe")
+        : path.join(process.resourcesPath, "python", "bin", "python"));
+
+  const pythonScript = isDev
+    ? path.join(projectRoot, "services", "python-core", "jarvis", "__main__.py")
+    : path.join(process.resourcesPath, "python-core", "jarvis", "__main__.py");
+
   const pythonCoreConfig: ServiceConfig = {
     name: "python-core",
-    command: process.platform === "win32"
-      ? path.join(projectRoot, ".venv", "Scripts", "python.exe")
-      : path.join(projectRoot, ".venv", "bin", "python"),
-    args: [path.join(projectRoot, "services", "python-core", "jarvis", "__main__.py")],
+    command: pythonExecutable,
+    args: [pythonScript],
     port: 8765,
-    cwd: projectRoot,
+    cwd: isDev ? projectRoot : process.resourcesPath,
   };
+
+  const nodeGatewayScript = isDev
+    ? path.join(projectRoot, "services", "node-gateway", "dist", "index.js")
+    : path.join(process.resourcesPath, "node-gateway", "dist", "index.js");
 
   const nodeGatewayConfig: ServiceConfig = {
     name: "node-gateway",
-    command: "node",
-    args: [path.join(projectRoot, "services", "node-gateway", "dist", "index.js")],
+    command: isDev ? "node" : (process.platform === "win32" ? path.join(process.resourcesPath, "node", "node.exe") : "node"),
+    args: [nodeGatewayScript],
     port: 3000,
-    cwd: path.join(projectRoot, "services", "node-gateway"),
+    cwd: isDev ? path.join(projectRoot, "services", "node-gateway") : path.join(process.resourcesPath, "node-gateway"),
   };
 
   app.on("second-instance", () => {

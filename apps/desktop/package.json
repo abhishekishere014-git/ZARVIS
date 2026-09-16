@@ -2,14 +2,15 @@
   "name": "@jarvis/desktop",
   "version": "0.1.0",
   "description": "ZARVIS Windows Desktop Client & Compact Floating HUD",
+  "author": "ZARVIS Team",
   "main": "dist/main/index.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node scripts/build-renderer.js",
     "start": "electron .",
     "test": "node --test dist/__tests__/**/*.test.js",
-    "pack": "electron-builder --dir",
-    "dist": "electron-builder",
-    "dist:win": "electron-builder --win"
+    "pack": "npx electron-builder --dir",
+    "dist": "npx electron-builder",
+    "dist:win": "npx electron-builder --win"
   },
   "dependencies": {
     "@jarvis/protocol": "file:../../packages/protocol",
@@ -18,13 +19,15 @@
   "devDependencies": {
     "@types/node": "^20.14.10",
     "@types/ws": "^8.5.10",
-    "electron": "^33.2.1",
+    "electron": "33.2.1",
     "electron-builder": "^24.13.3",
     "typescript": "^5.5.4"
   },
   "build": {
     "appId": "com.zarvis.desktop",
     "productName": "ZARVIS",
+    "electronVersion": "33.2.1",
+    "npmRebuild": false,
     "directories": {
       "output": "release"
     },
