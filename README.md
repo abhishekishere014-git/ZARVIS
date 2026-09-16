@@ -23,11 +23,11 @@ Every phase adheres to the **Mandatory Quality Gates** codified in [ENGINEERING_
 
 ## Architecture Overview
 
-JARVIS is built on a **Hybrid Architecture**:
+ZARVIS is built on a **Hybrid Architecture**:
 
 ```
-                         JARVIS PLATFORM
-                               │
+                          ZARVIS PLATFORM
+                                │
             ┌──────────────────┴──────────────────┐
             │                                     │
        PYTHON CORE                           NODE GATEWAY
@@ -59,8 +59,8 @@ JARVIS is built on a **Hybrid Architecture**:
 ## Monorepo Layout
 
 ```
-c:/ZARVIS/
-├── apps/                        # Future client applications (desktop, web)
+zarvis/
+├── apps/                        # Client applications (desktop, web)
 │   ├── desktop/
 │   └── web/
 ├── services/                    # Backend micro-services
@@ -209,7 +209,7 @@ The Autonomous Multi-Agent Runtime (`services/python-core/jarvis/agents/`) provi
 * **Evidence-Based Verification:** Tasks are verified through physical artifact inspection (existence, non-zero bytes, structure) and tool result verification rather than blind trust.
 * **Bounded Failure Recovery:** Automatic step retries (`max_step_retries=2`) and replans (`max_replans=2`) prevent infinite execution loops.
 * **Checkpointing & Lifecycle Control:** Lightweight run serialization (`data/checkpoints/`) supporting `pause_run()`, `resume_run()`, and `cancel_run()`.
-* **Single Authoritative JARVIS Response:** `FinalSynthesizer` consolidates all verified results, task metrics, and artifact paths into one clean response, hiding unnecessary internal chain-of-thought.
+* **Single Authoritative Assistant Response:** `FinalSynthesizer` consolidates all verified results, task metrics, and artifact paths into one clean response, hiding unnecessary internal chain-of-thought.
 
 ---
 
@@ -382,11 +382,20 @@ Phase 12 enforces 8 strict production quality gates transforming ZARVIS into a r
   * 475 / 475 automated tests passing (0 failures, 0 flaky) across the complete monorepo.
   * Synchronized across `origin/master` and `origin/main`.
 
-### Production Installer Artifacts
+### Production Installer Artifacts & Verification
 
 * **Installer Filename:** `ZARVIS-Setup-0.1.0.exe`
 * **Installer Exact Size:** `80,705,198 bytes` (~76.96 MB)
 * **SHA-256 Checksum:** `DC080760C2604BFAABC48AFC029EC9E18FA3DB90CDC7C671A73E8C82DF22E208`
-* **Unpacked Executable:** `release/win-unpacked/ZARVIS.exe` (188,889,088 bytes, v0.1.0)
-* **Architecture:** Windows 10 / 11 64-bit (x64)
-* **Status:** **Production Ready**
+* **Unpacked Binary:** `apps/desktop/release/win-unpacked/ZARVIS.exe` (188,889,088 bytes, v0.1.0)
+* **Target Architecture:** Windows 10 / 11 64-bit (x64)
+* **Signing Status:** Unsigned / Community Release Build (Commercial EV Authenticode certificate not attached).
+  > **Note on Windows SmartScreen:** Because this is an open-source community release, Windows Defender SmartScreen may display an unknown publisher notification on first launch. Click **"More info"** $\to$ **"Run anyway"** to proceed.
+* **Integrity Verification:**
+  ```powershell
+  # Verify checksum in PowerShell
+  (Get-FileHash .\ZARVIS-Setup-0.1.0.exe -Algorithm SHA256).Hash
+  # Expected: DC080760C2604BFAABC48AFC029EC9E18FA3DB90CDC7C671A73E8C82DF22E208
+  ```
+* **Continuous Integration:** Automated build, test (475 tests), and packaging smoke checks are continuously validated via GitHub Actions in [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
+

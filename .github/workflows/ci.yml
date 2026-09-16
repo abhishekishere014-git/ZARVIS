@@ -1,0 +1,54 @@
+name: ZARVIS CI
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  verify:
+    name: Build & Test (Windows)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e "services/python-core[dev]"
+
+      - name: Install Node.js dependencies
+        run: npm install
+
+      - name: Build TypeScript workspaces
+        run: npm run build
+
+      - name: Run Python Core test suite (407 tests)
+        run: npm run test:python
+
+      - name: Run Shared Protocol contract tests
+        run: npm run test:protocol
+
+      - name: Run Node.js Gateway tests
+        run: npm run test:gateway
+
+      - name: Run Desktop Client & E2E tests (47 tests)
+        run: npm test --workspace=@jarvis/desktop
+
+      - name: Packaging Smoke Check (Unpacked Build)
+        run: npx electron-builder --win --dir
+        working-directory: apps/desktop
