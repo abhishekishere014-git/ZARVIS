@@ -10,6 +10,9 @@ const api: ZarvisBridgeApi = {
   window: {
     minimize: () => ipcRenderer.send("zarvis:window:minimize"),
     maximize: () => ipcRenderer.send("zarvis:window:maximize"),
+    unmaximize: () => ipcRenderer.send("zarvis:window:unmaximize"),
+    toggleMaximize: () => ipcRenderer.invoke("zarvis:window:toggleMaximize"),
+    isMaximized: () => ipcRenderer.invoke("zarvis:window:isMaximized"),
     close: () => ipcRenderer.send("zarvis:window:close"),
     setMode: (mode) => ipcRenderer.invoke("zarvis:window:setMode", mode),
     getMode: () => ipcRenderer.invoke("zarvis:window:getMode"),
@@ -19,6 +22,11 @@ const api: ZarvisBridgeApi = {
       const listener = (_: any, mode: "full" | "hud") => callback(mode);
       ipcRenderer.on("zarvis:mode:changed", listener);
       return () => ipcRenderer.removeListener("zarvis:mode:changed", listener);
+    },
+    onMaximizedChange: (callback) => {
+      const listener = (_: any, isMaximized: boolean) => callback(isMaximized);
+      ipcRenderer.on("zarvis:window:maximizedChange", listener);
+      return () => ipcRenderer.removeListener("zarvis:window:maximizedChange", listener);
     },
   },
   voice: {
@@ -45,6 +53,7 @@ const api: ZarvisBridgeApi = {
   system: {
     getGatewayUrl: () => ipcRenderer.invoke("zarvis:system:getGatewayUrl"),
     getVersion: () => "1.0.0",
+    getDiagnostics: () => ipcRenderer.invoke("zarvis:system:getDiagnostics"),
     onRestartSubsystem: (callback) => {
       const listener = (_: any, subsystem: string) => callback(subsystem);
       ipcRenderer.on("zarvis:system:restartSubsystem", listener);
@@ -59,6 +68,11 @@ const api: ZarvisBridgeApi = {
       const listener = (_: any, isPaused: boolean) => callback(isPaused);
       ipcRenderer.on("zarvis:assistant:pauseToggle", listener);
       return () => ipcRenderer.removeListener("zarvis:assistant:pauseToggle", listener);
+    },
+    onRuntimeError: (callback) => {
+      const listener = (_: any, errInfo: any) => callback(errInfo);
+      ipcRenderer.on("zarvis:system:runtimeError", listener);
+      return () => ipcRenderer.removeListener("zarvis:system:runtimeError", listener);
     },
   },
 };

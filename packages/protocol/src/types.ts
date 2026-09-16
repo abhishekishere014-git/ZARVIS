@@ -27,7 +27,7 @@ export interface JarvisResponse<TPayload = Record<string, unknown>> {
   timestamp: string;
   success: boolean;
   payload?: TPayload;
-  error?: ProtocolError;
+  error?: ProtocolError | null;
 }
 
 export interface JarvisEvent<TPayload = Record<string, unknown>> {

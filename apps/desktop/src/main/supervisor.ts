@@ -9,6 +9,8 @@ import * as fs from "node:fs";
 import * as net from "node:net";
 import * as path from "node:path";
 
+export type ServiceState = "STARTING" | "READY" | "DEGRADED" | "FAILED" | "STOPPING" | "STOPPED";
+
 export interface ServiceConfig {
   name: "python-core" | "node-gateway";
   command: string;
@@ -24,11 +26,17 @@ export interface ServiceStatus {
   pid: number | null;
   port: number;
   external: boolean;
+  state: ServiceState;
+  error?: string;
+  stderr?: string;
 }
 
 export class ProcessSupervisor {
   private processes: Map<string, ChildProcess> = new Map();
   private pids: Map<string, number> = new Map();
+  private serviceStates: Map<string, ServiceState> = new Map();
+  private serviceErrors: Map<string, string> = new Map();
+  private serviceStderr: Map<string, string[]> = new Map();
   private pidDir: string;
   private isShuttingDown = false;
 
@@ -154,12 +162,14 @@ export class ProcessSupervisor {
     const portActive = await this.isPortInUse(config.port);
     if (portActive) {
       // Service is already running externally (e.g. in dev mode or prior instance)
+      this.serviceStates.set(config.name, "READY");
       return {
         name: config.name,
         running: true,
         pid: null,
         port: config.port,
         external: true,
+        state: "READY",
       };
     }
 
@@ -172,17 +182,72 @@ export class ProcessSupervisor {
           pid: existing.pid ?? null,
           port: config.port,
           external: false,
+          state: this.serviceStates.get(config.name) ?? "READY",
         };
       }
     }
 
-    // Spawn child process
-    const child = spawn(config.command, config.args, {
-      cwd: config.cwd,
-      env: { ...process.env, ...config.env },
-      stdio: ["ignore", "pipe", "pipe"],
-      windowsHide: true,
-      detached: false,
+    // Verify executable existence for absolute paths to prevent spawn ENOENT
+    if (path.isAbsolute(config.command) && !fs.existsSync(config.command)) {
+      const errMsg = `Executable not found: "${config.command}" (ENOENT)`;
+      this.serviceStates.set(config.name, "FAILED");
+      this.serviceErrors.set(config.name, errMsg);
+      return {
+        name: config.name,
+        running: false,
+        pid: null,
+        port: config.port,
+        external: false,
+        state: "FAILED",
+        error: errMsg,
+      };
+    }
+
+    this.serviceStates.set(config.name, "STARTING");
+    this.serviceErrors.delete(config.name);
+
+    // Spawn child process with safety boundary
+    let child: ChildProcess;
+    try {
+      child = spawn(config.command, config.args, {
+        cwd: config.cwd,
+        env: { ...process.env, ...config.env },
+        stdio: ["ignore", "pipe", "pipe"],
+        windowsHide: true,
+        detached: false,
+      });
+    } catch (spawnErr: any) {
+      const errMsg = `Process spawn failure: ${spawnErr?.message || spawnErr}`;
+      this.serviceStates.set(config.name, "FAILED");
+      this.serviceErrors.set(config.name, errMsg);
+      return {
+        name: config.name,
+        running: false,
+        pid: null,
+        port: config.port,
+        external: false,
+        state: "FAILED",
+        error: errMsg,
+      };
+    }
+
+    // Attach error listener immediately so async spawn errors (ENOENT, EACCES)
+    // never bubble up as unhandled exceptions in the Electron main process
+    child.on("error", (err: any) => {
+      const errMsg = err?.code ? `${err.code}: ${err.message}` : String(err);
+      this.serviceStates.set(config.name, "FAILED");
+      this.serviceErrors.set(config.name, errMsg);
+      this.processes.delete(config.name);
+      this.pids.delete(config.name);
+      this.removePidFile(config.name);
+    });
+
+    child.stderr?.on("data", (chunk: Buffer) => {
+      const text = chunk.toString("utf-8");
+      const errList = this.serviceStderr.get(config.name) || [];
+      errList.push(text);
+      if (errList.length > 50) errList.shift();
+      this.serviceStderr.set(config.name, errList);
     });
 
     if (child.pid) {
@@ -194,12 +259,24 @@ export class ProcessSupervisor {
         this.processes.delete(config.name);
         this.pids.delete(config.name);
         this.removePidFile(config.name);
+        if (!this.isShuttingDown) {
+          if (code !== 0 && code !== null) {
+            this.serviceStates.set(config.name, "FAILED");
+            this.serviceErrors.set(config.name, `Process exited with code ${code}`);
+          } else {
+            this.serviceStates.set(config.name, "STOPPED");
+          }
+        }
       });
     }
 
-    // Wait briefly for service port to become available (up to 3s)
+    // Wait for service port to become available (up to 8s for Python Core, 3.5s for Node Gateway)
     let ready = false;
-    for (let i = 0; i < 30; i++) {
+    const maxChecks = config.name === "python-core" ? 80 : 35;
+    for (let i = 0; i < maxChecks; i++) {
+      if (this.serviceStates.get(config.name) === "FAILED") {
+        break;
+      }
       if (await this.isPortInUse(config.port)) {
         ready = true;
         break;
@@ -207,12 +284,23 @@ export class ProcessSupervisor {
       await new Promise((res) => setTimeout(res, 100));
     }
 
+    const finalState: ServiceState = ready
+      ? "READY"
+      : this.serviceStates.get(config.name) === "FAILED"
+      ? "FAILED"
+      : "DEGRADED";
+
+    this.serviceStates.set(config.name, finalState);
+
     return {
       name: config.name,
       running: ready,
       pid: child.pid ?? null,
       port: config.port,
       external: false,
+      state: finalState,
+      error: this.serviceErrors.get(config.name),
+      stderr: (this.serviceStderr.get(config.name) || []).join(""),
     };
   }
 
@@ -305,12 +393,19 @@ export class ProcessSupervisor {
   public getStatus(name: string, port: number): ServiceStatus {
     const child = this.processes.get(name);
     const isManaged = !!(child && child.exitCode === null);
+    const state = this.serviceStates.get(name) ?? (isManaged ? "READY" : "STOPPED");
+    const error = this.serviceErrors.get(name);
+    const stderrLines = this.serviceStderr.get(name);
+    const stderr = stderrLines && stderrLines.length > 0 ? stderrLines.join("") : undefined;
     return {
       name,
-      running: isManaged,
+      running: isManaged || state === "READY",
       pid: child?.pid ?? null,
       port,
-      external: !isManaged,
+      external: !isManaged && state === "READY",
+      state,
+      error,
+      stderr,
     };
   }
 

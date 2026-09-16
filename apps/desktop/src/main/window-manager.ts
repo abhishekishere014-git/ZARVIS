@@ -82,6 +82,15 @@ export class WindowManager {
       this.window?.show();
     });
 
+    // Forward maximize / unmaximize state to renderer
+    this.window.on("maximize", () => {
+      this.window?.webContents.send("zarvis:window:maximizedChange", true);
+    });
+
+    this.window.on("unmaximize", () => {
+      this.window?.webContents.send("zarvis:window:maximizedChange", false);
+    });
+
     // Close-to-tray behavior
     this.window.on("close", (event) => {
       if (!this.isQuitting) {
@@ -137,6 +146,37 @@ export class WindowManager {
     this.isPinned = !this.isPinned;
     this.window.setAlwaysOnTop(this.isPinned, this.mode === "hud" ? "floating" : "normal");
     return this.isPinned;
+  }
+
+  public minimize(): void {
+    this.window?.minimize();
+  }
+
+  public maximize(): void {
+    this.window?.maximize();
+  }
+
+  public unmaximize(): void {
+    this.window?.unmaximize();
+  }
+
+  public toggleMaximize(): boolean {
+    if (!this.window) return false;
+    if (this.window.isMaximized()) {
+      this.window.unmaximize();
+      return false;
+    } else {
+      this.window.maximize();
+      return true;
+    }
+  }
+
+  public isMaximized(): boolean {
+    return this.window?.isMaximized() ?? false;
+  }
+
+  public close(): void {
+    this.window?.close();
   }
 
   public showAndFocus(): void {

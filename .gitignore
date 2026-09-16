@@ -67,4 +67,5 @@ storage/
 data/
 workspace/
 release/
+build-resources/
 .zarvis/

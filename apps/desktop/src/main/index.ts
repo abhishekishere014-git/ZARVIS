@@ -11,6 +11,7 @@ import { SystemTrayManager } from "./tray";
 import { HotkeyManager } from "./hotkeys";
 import { NotificationManager, NotificationPayload } from "./notifications";
 import { ProcessSupervisor, ServiceConfig } from "./supervisor";
+import { RuntimeResolver } from "./runtime-resolver";
 
 const gotTheLock = app.requestSingleInstanceLock();
 
@@ -29,36 +30,31 @@ if (!gotTheLock) {
 
   const gatewayUrl = process.env.GATEWAY_URL || "ws://127.0.0.1:3000/ws";
 
-  const pythonExecutable = isDev
-    ? (process.platform === "win32"
-        ? path.join(projectRoot, ".venv", "Scripts", "python.exe")
-        : path.join(projectRoot, ".venv", "bin", "python"))
-    : (process.platform === "win32"
-        ? path.join(process.resourcesPath, "python", "python.exe")
-        : path.join(process.resourcesPath, "python", "bin", "python"));
+  const runtimeResolver = new RuntimeResolver({
+    isPackaged: !isDev,
+    projectRoot,
+    resourcesPath: process.resourcesPath,
+  });
 
-  const pythonScript = isDev
-    ? path.join(projectRoot, "services", "python-core", "jarvis", "__main__.py")
-    : path.join(process.resourcesPath, "python-core", "jarvis", "__main__.py");
-
+  const pyRuntime = runtimeResolver.resolvePythonCore();
   const pythonCoreConfig: ServiceConfig = {
     name: "python-core",
-    command: pythonExecutable,
-    args: [pythonScript],
+    command: pyRuntime.command,
+    args: pyRuntime.args,
     port: 8765,
-    cwd: isDev ? projectRoot : process.resourcesPath,
+    cwd: pyRuntime.cwd,
   };
 
-  const nodeGatewayScript = isDev
-    ? path.join(projectRoot, "services", "node-gateway", "dist", "index.js")
-    : path.join(process.resourcesPath, "node-gateway", "dist", "index.js");
-
+  const nodeRuntime = runtimeResolver.resolveNodeGateway();
   const nodeGatewayConfig: ServiceConfig = {
     name: "node-gateway",
-    command: isDev ? "node" : (process.platform === "win32" ? path.join(process.resourcesPath, "node", "node.exe") : "node"),
-    args: [nodeGatewayScript],
+    command: nodeRuntime.command,
+    args: nodeRuntime.args,
     port: 3000,
-    cwd: isDev ? path.join(projectRoot, "services", "node-gateway") : path.join(process.resourcesPath, "node-gateway"),
+    cwd: nodeRuntime.cwd,
+    env: {
+      NODE_PATH: path.join(nodeRuntime.cwd, "vendor"),
+    },
   };
 
   app.on("second-instance", () => {
@@ -68,20 +64,9 @@ if (!gotTheLock) {
   });
 
   app.whenReady().then(async () => {
-    // 1. Initialize Window Manager
+    // 1. Initialize Window Manager and Supervisor instances
     windowManager = new WindowManager(preloadPath, htmlPath);
-    windowManager.createWindow();
-
-    // 2. Initialize Process Supervisor
     supervisor = new ProcessSupervisor(projectRoot);
-
-    // Supervised start (auto-attach if already running in dev mode, or spawn)
-    try {
-      await supervisor.startService(pythonCoreConfig);
-      await supervisor.startService(nodeGatewayConfig);
-    } catch (err) {
-      console.warn("Service auto-start warning:", err);
-    }
 
     const onActivateVoice = () => {
       const win = windowManager?.getMainWindow();
@@ -122,44 +107,29 @@ if (!gotTheLock) {
       }
     };
 
-    // 3. Initialize System Tray
-    trayManager = new SystemTrayManager(windowManager, onQuit, onActivateVoice, {
-      onQuit,
-      onActivateVoice,
-      onRestartCore,
-      onRestartGateway,
-      onNavigateTab: (tab) => {
-        windowManager?.getMainWindow()?.webContents.send("zarvis:navigation:switchTab", tab);
-      },
-      onTogglePause: (isPaused) => {
-        windowManager?.getMainWindow()?.webContents.send("zarvis:assistant:pauseToggle", isPaused);
-      },
-    });
-    trayManager.createTray();
-
-    // 4. Initialize Global Hotkeys
-    hotkeyManager = new HotkeyManager(windowManager, onActivateVoice);
-    const hotkeyRes = hotkeyManager.register("CommandOrControl+Space");
-    if (!hotkeyRes.success) {
-      console.warn("Global hotkey registration notice:", hotkeyRes.error);
-    }
-
-    // 5. IPC Handlers
+    // 2. Register ALL IPC Handlers BEFORE window creation so renderer never gets unhandled calls
     ipcMain.on("zarvis:window:minimize", () => {
-      windowManager?.getMainWindow()?.minimize();
+      windowManager?.minimize();
     });
 
     ipcMain.on("zarvis:window:maximize", () => {
-      const win = windowManager?.getMainWindow();
-      if (win?.isMaximized()) {
-        win.unmaximize();
-      } else {
-        win?.maximize();
-      }
+      windowManager?.maximize();
+    });
+
+    ipcMain.on("zarvis:window:unmaximize", () => {
+      windowManager?.unmaximize();
+    });
+
+    ipcMain.handle("zarvis:window:toggleMaximize", () => {
+      return windowManager?.toggleMaximize() ?? false;
+    });
+
+    ipcMain.handle("zarvis:window:isMaximized", () => {
+      return windowManager?.isMaximized() ?? false;
     });
 
     ipcMain.on("zarvis:window:close", () => {
-      windowManager?.getMainWindow()?.close();
+      windowManager?.close();
     });
 
     ipcMain.handle("zarvis:window:setMode", async (_, mode: "full" | "hud") => {
@@ -210,6 +180,74 @@ if (!gotTheLock) {
         supervisor.getStatus("node-gateway", 3000),
       ];
     });
+
+    ipcMain.handle("zarvis:system:getDiagnostics", () => {
+      return {
+        validation: runtimeResolver.validateAll(),
+        processes: supervisor ? [
+          supervisor.getStatus("python-core", 8765),
+          supervisor.getStatus("node-gateway", 3000),
+        ] : [],
+      };
+    });
+
+    // 3. Initialize System Tray
+    trayManager = new SystemTrayManager(windowManager, onQuit, onActivateVoice, {
+      onQuit,
+      onActivateVoice,
+      onRestartCore,
+      onRestartGateway,
+      onNavigateTab: (tab) => {
+        windowManager?.getMainWindow()?.webContents.send("zarvis:navigation:switchTab", tab);
+      },
+      onTogglePause: (isPaused) => {
+        windowManager?.getMainWindow()?.webContents.send("zarvis:assistant:pauseToggle", isPaused);
+      },
+    });
+    trayManager.createTray();
+
+    // 4. Initialize Global Hotkeys
+    hotkeyManager = new HotkeyManager(windowManager, onActivateVoice);
+    const hotkeyRes = hotkeyManager.register("CommandOrControl+Space");
+    if (!hotkeyRes.success) {
+      console.warn("Global hotkey registration notice:", hotkeyRes.error);
+    }
+
+    // 5. Create Main Window
+    windowManager.createWindow();
+
+    // 6. Validate runtimes before spawning and notify UI if any files missing
+    const validation = runtimeResolver.validateAll();
+    const win = windowManager.getMainWindow();
+
+    if (!validation.ok) {
+      console.warn("Runtime validation warning:", validation.errors);
+      win?.webContents.on("did-finish-load", () => {
+        win.webContents.send("zarvis:system:runtimeError", {
+          errors: validation.errors,
+          diagnostics: validation.diagnostics,
+        });
+      });
+      NotificationManager.show({
+        title: "ZARVIS Runtime Notice",
+        body: "Backend runtime files missing. Running in UI diagnostic mode.",
+        level: "warning",
+      });
+    }
+
+    // 7. Start background services asynchronously (non-blocking)
+    (async () => {
+      try {
+        if (pyRuntime.exists) {
+          await supervisor.startService(pythonCoreConfig);
+        }
+        if (nodeRuntime.exists) {
+          await supervisor.startService(nodeGatewayConfig);
+        }
+      } catch (err) {
+        console.warn("Service auto-start warning:", err);
+      }
+    })();
   });
 
   app.on("before-quit", async (e) => {

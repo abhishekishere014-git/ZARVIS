@@ -18,7 +18,7 @@ export const JarvisRequestSchema = z.object({
   id: z.string().min(1),
   type: z.string().min(1),
   version: ProtocolVersionSchema,
-  timestamp: z.string().datetime(),
+  timestamp: z.string().datetime({ offset: true }),
   payload: z.record(z.unknown()).default({}),
 });
 
@@ -26,20 +26,20 @@ export const JarvisResponseSchema = z.object({
   id: z.string().min(1),
   type: z.string().min(1),
   version: ProtocolVersionSchema,
-  timestamp: z.string().datetime(),
+  timestamp: z.string().datetime({ offset: true }),
   success: z.boolean(),
   payload: z.record(z.unknown()).optional(),
-  error: ProtocolErrorSchema.optional(),
+  error: ProtocolErrorSchema.nullable().optional(),
 }).refine(
   (data) => {
     if (data.success) {
-      return data.error === undefined;
+      return data.error === undefined || data.error === null;
     } else {
-      return data.error !== undefined;
+      return data.error !== undefined && data.error !== null;
     }
   },
   {
-    message: "If success is true, error must be undefined; if success is false, error must be defined",
+    message: "If success is true, error must be undefined or null; if success is false, error must be defined and not null",
   }
 );
 
@@ -47,7 +47,7 @@ export const JarvisEventSchema = z.object({
   id: z.string().min(1),
   type: z.string().min(1),
   version: ProtocolVersionSchema,
-  timestamp: z.string().datetime(),
+  timestamp: z.string().datetime({ offset: true }),
   correlation_id: z.string().optional(),
   payload: z.record(z.unknown()).default({}),
 });

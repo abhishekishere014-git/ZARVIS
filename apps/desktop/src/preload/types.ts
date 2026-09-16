@@ -6,12 +6,16 @@
 export interface ZarvisWindowApi {
   minimize: () => void;
   maximize: () => void;
+  unmaximize: () => void;
+  toggleMaximize: () => Promise<boolean>;
+  isMaximized: () => Promise<boolean>;
   close: () => void;
   setMode: (mode: "full" | "hud") => Promise<void>;
   getMode: () => Promise<"full" | "hud">;
   togglePin: () => Promise<boolean>;
   isPinned: () => Promise<boolean>;
   onModeChange: (callback: (mode: "full" | "hud") => void) => () => void;
+  onMaximizedChange: (callback: (isMaximized: boolean) => void) => () => void;
 }
 
 export interface ZarvisVoiceBridgeApi {
@@ -31,9 +35,11 @@ export interface ZarvisNotificationApi {
 export interface ZarvisSystemBridgeApi {
   getGatewayUrl: () => Promise<string>;
   getVersion: () => string;
+  getDiagnostics: () => Promise<any>;
   onRestartSubsystem?: (callback: (subsystem: string) => void) => () => void;
   onNavigateTab?: (callback: (tab: string) => void) => () => void;
   onPauseToggle?: (callback: (isPaused: boolean) => void) => () => void;
+  onRuntimeError?: (callback: (errorInfo: { errors: string[]; diagnostics: any }) => void) => () => void;
 }
 
 export interface ZarvisBridgeApi {

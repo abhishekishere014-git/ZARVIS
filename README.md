@@ -1,7 +1,7 @@
 # ZARVIS — Local-First Intelligent Windows Desktop Assistant
 
 [![Release](https://img.shields.io/badge/release-v0.1.0-blue.svg)](https://github.com/abhishekishere014-git/ZARVIS/releases)
-[![Tests](https://img.shields.io/badge/tests-475%2F475%20passing-brightgreen.svg)](https://github.com/abhishekishere014-git/ZARVIS)
+[![Tests](https://img.shields.io/badge/tests-481%2F481%20passing-brightgreen.svg)](https://github.com/abhishekishere014-git/ZARVIS)
 [![Platform](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011%20x64-0078d7.svg)](https://github.com/abhishekishere014-git/ZARVIS)
 [![Python](https://img.shields.io/badge/python-3.12%2B-yellow.svg)](https://python.org)
 [![Node](https://img.shields.io/badge/node-20%2B%20%7C%2022-green.svg)](https://nodejs.org)

@@ -31,4 +31,21 @@ if (fs.existsSync(htmlSrc)) {
   fs.writeFileSync(htmlDest, html, "utf-8");
 }
 
-console.log("Renderer assets assembled in dist/renderer successfully.");
+// 4. Bundle app.ts into self-contained browser IIFE (dist/renderer/app.js)
+const esbuild = require("esbuild");
+const appEntry = path.join(srcRenderer, "app.ts");
+const appOut = path.join(distRenderer, "app.js");
+
+esbuild.buildSync({
+  entryPoints: [appEntry],
+  bundle: true,
+  outfile: appOut,
+  platform: "browser",
+  target: "es2022",
+  format: "iife",
+  sourcemap: false,
+  logLevel: "warning",
+});
+
+console.log("Renderer assets and browser bundle assembled in dist/renderer successfully.");
+

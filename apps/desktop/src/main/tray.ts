@@ -31,18 +31,26 @@ export class SystemTrayManager {
     private readonly callbacks?: Partial<TrayCallbacks>
   ) {}
 
-  public createTray(): Tray {
-    const icon = this.loadTrayIcon();
-    this.tray = new Tray(icon);
-    this.tray.setToolTip(`ZARVIS — ${this.statusText}`);
-
-    this.updateContextMenu();
-
-    this.tray.on("click", () => {
-      this.windowManager.showAndFocus();
-    });
-
-    return this.tray;
+  public createTray(): Tray | null {
+    try {
+      const iconPath = this.getTrayIconPath();
+      if (iconPath) {
+        this.tray = new Tray(iconPath);
+      } else {
+        const icon = this.loadTrayIcon();
+        if (icon.isEmpty()) return null;
+        this.tray = new Tray(icon);
+      }
+      this.tray.setToolTip(`ZARVIS — ${this.statusText}`);
+      this.updateContextMenu();
+      this.tray.on("click", () => {
+        this.windowManager.showAndFocus();
+      });
+      return this.tray;
+    } catch (err) {
+      console.warn("Failed to create system tray:", err);
+      return null;
+    }
   }
 
   public updateStatus(newStatus: string): void {
@@ -166,17 +174,54 @@ export class SystemTrayManager {
     this.tray.setContextMenu(contextMenu);
   }
 
-  private loadTrayIcon(): Electron.NativeImage {
-    const candidatePaths = [
-      path.join(__dirname, "../../assets/tray.png"),
-      path.join(__dirname, "../assets/tray.png"),
-      path.join(process.cwd(), "apps/desktop/assets/tray.png"),
-      path.join(process.cwd(), "assets/tray.png"),
+  private getTrayIconPath(): string | null {
+    const iconNames = process.platform === "win32" ? ["tray.ico", "tray.png", "icon.ico"] : ["tray.png", "icon.png"];
+    const baseDirs = [
+      path.join(process.resourcesPath ?? "", "assets"),
+      path.join(process.cwd(), "apps/desktop/assets"),
+      path.join(process.cwd(), "assets"),
+      path.join(__dirname, "../../assets"),
+      path.join(__dirname, "../assets"),
     ];
 
-    for (const p of candidatePaths) {
-      if (fs.existsSync(p)) {
-        return nativeImage.createFromPath(p);
+    for (const name of iconNames) {
+      for (const dir of baseDirs) {
+        const full = path.join(dir, name);
+        if (fs.existsSync(full)) {
+          return full;
+        }
+      }
+    }
+    return null;
+  }
+
+  private loadTrayIcon(): Electron.NativeImage {
+    const iconNames = process.platform === "win32" ? ["tray.ico", "tray.png", "icon.ico"] : ["tray.png", "icon.png"];
+    const baseDirs = [
+      path.join(__dirname, "../../assets"),
+      path.join(__dirname, "../assets"),
+      path.join(process.resourcesPath ?? "", "assets"),
+      path.join(process.cwd(), "apps/desktop/assets"),
+      path.join(process.cwd(), "assets"),
+    ];
+
+    for (const name of iconNames) {
+      for (const dir of baseDirs) {
+        const full = path.join(dir, name);
+        if (fs.existsSync(full)) {
+          try {
+            const buffer = fs.readFileSync(full);
+            const img = nativeImage.createFromBuffer(buffer);
+            if (!img.isEmpty()) {
+              return img;
+            }
+          } catch {
+            const img = nativeImage.createFromPath(full);
+            if (!img.isEmpty()) {
+              return img;
+            }
+          }
+        }
       }
     }
 

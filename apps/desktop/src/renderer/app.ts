@@ -146,6 +146,46 @@ export class ZarvisApp {
       this.triggerVisionScan();
     });
 
+    // In-App Desktop Window Controls (Minimize, Maximize / Restore, Close)
+    document.getElementById("btn-window-minimize")?.addEventListener("click", () => {
+      window.zarvis?.window.minimize();
+    });
+    document.getElementById("btn-window-maximize")?.addEventListener("click", async () => {
+      if (window.zarvis?.window.toggleMaximize) {
+        const isMax = await window.zarvis.window.toggleMaximize();
+        this.updateMaximizeIcon(isMax);
+      } else {
+        window.zarvis?.window.maximize();
+      }
+    });
+    document.getElementById("btn-window-close")?.addEventListener("click", () => {
+      window.zarvis?.window.close();
+    });
+
+    // Diagnostics Modal Controls
+    document.getElementById("btn-diag-close")?.addEventListener("click", () => {
+      document.getElementById("modal-diagnostics")?.classList.add("hidden");
+    });
+    document.getElementById("btn-diag-retry")?.addEventListener("click", async () => {
+      document.getElementById("modal-diagnostics")?.classList.add("hidden");
+      await this.init();
+    });
+    document.getElementById("btn-diag-copy")?.addEventListener("click", () => {
+      const box = document.getElementById("diagnostic-details-box");
+      if (box) {
+        navigator.clipboard?.writeText(box.innerText);
+        window.zarvis?.notifications.show("Diagnostics Copied", "Diagnostic report copied to clipboard", "info");
+      }
+    });
+    document.getElementById("connection-text")?.addEventListener("click", () => {
+      if (!this.gateway.isConnected()) {
+        this.showDiagnosticsModal();
+      }
+    });
+    document.getElementById("telemetry-summary-dot")?.addEventListener("click", () => {
+      this.showDiagnosticsModal();
+    });
+
     // Safety Modal
     document.getElementById("safety-modal-deny")?.addEventListener("click", () => {
       document.getElementById("modal-safety-approval")?.classList.add("hidden");
@@ -171,6 +211,15 @@ export class ZarvisApp {
       this.setWindowMode(mode);
     });
 
+    window.zarvis.window.onMaximizedChange?.((isMaximized) => {
+      this.updateMaximizeIcon(isMaximized);
+    });
+
+    // Sync initial maximized state
+    window.zarvis.window.isMaximized?.().then((isMax) => {
+      this.updateMaximizeIcon(isMax);
+    });
+
     window.zarvis.voice.onActivateVoice(() => {
       this.handleMicTap();
     });
@@ -189,6 +238,10 @@ export class ZarvisApp {
 
     window.zarvis.system.onPauseToggle?.((isPaused) => {
       this.handlePauseToggle(isPaused);
+    });
+
+    window.zarvis.system.onRuntimeError?.((errInfo) => {
+      this.showDiagnosticsModal(errInfo);
     });
   }
 
@@ -847,6 +900,103 @@ export class ZarvisApp {
       factsList.innerHTML = state.memories.facts
         .map((f: string) => `<li class="bg-[#0d1320] p-1.5 rounded border border-slate-800/50">${f}</li>`)
         .join("");
+    }
+
+    // 6. Render Telemetry Sidebar
+    const telDot = document.getElementById("telemetry-summary-dot");
+    const telCore = document.getElementById("tel-core");
+    const telGw = document.getElementById("tel-gateway");
+    const telIpc = document.getElementById("tel-ipc");
+    const telVoice = document.getElementById("tel-voice");
+    const telVision = document.getElementById("tel-vision");
+    const telMem = document.getElementById("tel-memory");
+
+    if (state.telemetry) {
+      const isHealthy = state.telemetry.core === "healthy" && state.telemetry.gateway === "healthy";
+      if (telDot) {
+        telDot.className = isHealthy
+          ? "w-1.5 h-1.5 rounded-full bg-emerald-400"
+          : "w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse";
+      }
+      if (telCore) {
+        const ok = state.telemetry.core === "healthy";
+        telCore.textContent = ok ? "● Healthy" : "○ Offline";
+        telCore.className = ok ? "text-emerald-400 font-mono" : "text-red-400 font-mono";
+      }
+      if (telGw) {
+        const ok = state.telemetry.gateway === "healthy";
+        telGw.textContent = ok ? "● Healthy" : "○ Offline";
+        telGw.className = ok ? "text-emerald-400 font-mono" : "text-red-400 font-mono";
+      }
+      if (telIpc) {
+        const ok = state.telemetry.ipc === "connected";
+        telIpc.textContent = ok ? "● Connected" : "○ Disconnected";
+        telIpc.className = ok ? "text-emerald-400 font-mono" : "text-red-400 font-mono";
+      }
+      if (telVoice) {
+        const ok = state.telemetry.voice === "ready";
+        telVoice.textContent = ok ? "● Ready" : "○ Standby";
+        telVoice.className = ok ? "text-emerald-400 font-mono" : "text-slate-400 font-mono";
+      }
+      if (telVision) {
+        const ok = state.telemetry.vision === "ready";
+        telVision.textContent = ok ? "● Ready" : "○ Standby";
+        telVision.className = ok ? "text-emerald-400 font-mono" : "text-slate-400 font-mono";
+      }
+      if (telMem) {
+        const ok = state.telemetry.memory === "ready";
+        telMem.textContent = ok ? "● Ready" : "○ Standby";
+        telMem.className = ok ? "text-emerald-400 font-mono" : "text-slate-400 font-mono";
+      }
+    }
+  }
+
+  private updateMaximizeIcon(isMaximized: boolean): void {
+    const iconMax = document.getElementById("icon-window-maximize");
+    const iconRestore = document.getElementById("icon-window-restore");
+    if (isMaximized) {
+      iconMax?.classList.add("hidden");
+      iconRestore?.classList.remove("hidden");
+    } else {
+      iconMax?.classList.remove("hidden");
+      iconRestore?.classList.add("hidden");
+    }
+  }
+
+  public async showDiagnosticsModal(errInfo?: any): Promise<void> {
+    const modal = document.getElementById("modal-diagnostics");
+    const detailsBox = document.getElementById("diagnostic-details-box");
+    const msgEl = document.getElementById("diagnostic-message");
+
+    if (!modal) return;
+    modal.classList.remove("hidden");
+
+    let diagText = "";
+    if (errInfo) {
+      if (msgEl) msgEl.textContent = "Missing or incomplete runtime files detected.";
+      diagText += `RUNTIME VALIDATION FAILED:\n${(errInfo.errors || []).join("\n")}\n\n`;
+      diagText += `DIAGNOSTICS:\n${JSON.stringify(errInfo.diagnostics, null, 2)}`;
+    } else if (window.zarvis?.system.getDiagnostics) {
+      try {
+        const diag = await window.zarvis.system.getDiagnostics();
+        const errors = diag.validation?.errors || [];
+        if (errors.length > 0) {
+          if (msgEl) msgEl.textContent = "Backend runtime files are missing from the installed package.";
+          diagText += `ERRORS:\n${errors.join("\n")}\n\n`;
+        } else {
+          if (msgEl) msgEl.textContent = "Backend services could not be reached over local loopback.";
+        }
+        diagText += `PROCESS STATUS:\n${JSON.stringify(diag.processes, null, 2)}\n\n`;
+        diagText += `RUNTIME INFO:\n${JSON.stringify(diag.validation?.diagnostics, null, 2)}`;
+      } catch (err) {
+        diagText = `Failed to fetch diagnostics: ${err}`;
+      }
+    } else {
+      diagText = "Local WebSocket Gateway on ws://127.0.0.1:3000/ws is unreachable.";
+    }
+
+    if (detailsBox) {
+      detailsBox.textContent = diagText;
     }
   }
 }

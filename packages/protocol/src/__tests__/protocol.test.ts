@@ -54,6 +54,22 @@ describe("JARVIS Protocol Specification (v1.0)", () => {
     assert.equal(result.data?.success, true);
   });
 
+  it("should validate a conforming successful response with null error (Python Core format)", () => {
+    const validResponseWithNullError = {
+      id: "res-123-null",
+      type: "system.health",
+      version: PROTOCOL_VERSION,
+      timestamp: new Date().toISOString(),
+      success: true,
+      payload: { status: "healthy" },
+      error: null,
+    };
+
+    const result = validateResponse(validResponseWithNullError);
+    assert.equal(result.valid, true);
+    assert.equal(result.data?.success, true);
+  });
+
   it("should validate a conforming error response", () => {
     const errorResponse = {
       id: "res-124",

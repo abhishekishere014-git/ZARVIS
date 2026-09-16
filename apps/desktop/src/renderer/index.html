@@ -29,13 +29,13 @@
         id="hud-mic-btn"
         class="flex items-center space-x-1.5 px-3 py-1 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition-all shadow-sm active:scale-95 cursor-pointer"
       >
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 02-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 0 1-7 7m0 0a7 7 0 0 1-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 0 1-3-3V5a3 3 0 1 1 6 0v6a3 3 0 0 1-3 3z"/></svg>
         <span id="hud-mic-label">Speak</span>
       </button>
 
       <!-- Vision Trigger -->
       <button id="hud-vision-btn" title="Scan Screen" class="p-1.5 text-slate-400 hover:text-white rounded-full hover:bg-slate-800 transition-all">
-        <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+        <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7 -1.274 4.057 -5.064 7 -9.542 7 -4.477 0 -8.268 -2.943 -9.542 -7z"/></svg>
       </button>
 
       <!-- Pin / Always on top -->
@@ -106,14 +106,14 @@
       <div class="bg-[#111827]/80 rounded-lg p-3 border border-slate-800/80 text-[10px] space-y-1.5">
         <div class="flex justify-between items-center text-slate-300 font-semibold mb-1">
           <span>System Status</span>
-          <span id="telemetry-summary-dot" class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+          <span id="telemetry-summary-dot" class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
         </div>
-        <div class="flex justify-between text-slate-400"><span>Core</span><span id="tel-core" class="text-emerald-400 font-mono">● Healthy</span></div>
-        <div class="flex justify-between text-slate-400"><span>Gateway</span><span id="tel-gateway" class="text-emerald-400 font-mono">● Healthy</span></div>
-        <div class="flex justify-between text-slate-400"><span>IPC</span><span id="tel-ipc" class="text-emerald-400 font-mono">● Connected</span></div>
-        <div class="flex justify-between text-slate-400"><span>Voice</span><span id="tel-voice" class="text-emerald-400 font-mono">● Ready</span></div>
-        <div class="flex justify-between text-slate-400"><span>Vision</span><span id="tel-vision" class="text-emerald-400 font-mono">● Ready</span></div>
-        <div class="flex justify-between text-slate-400"><span>Memory</span><span id="tel-memory" class="text-emerald-400 font-mono">● Ready</span></div>
+        <div class="flex justify-between text-slate-400"><span>Core</span><span id="tel-core" class="text-amber-400 font-mono">○ Starting</span></div>
+        <div class="flex justify-between text-slate-400"><span>Gateway</span><span id="tel-gateway" class="text-amber-400 font-mono">○ Starting</span></div>
+        <div class="flex justify-between text-slate-400"><span>IPC</span><span id="tel-ipc" class="text-amber-400 font-mono">○ Connecting</span></div>
+        <div class="flex justify-between text-slate-400"><span>Voice</span><span id="tel-voice" class="text-slate-400 font-mono">○ Standby</span></div>
+        <div class="flex justify-between text-slate-400"><span>Vision</span><span id="tel-vision" class="text-slate-400 font-mono">○ Standby</span></div>
+        <div class="flex justify-between text-slate-400"><span>Memory</span><span id="tel-memory" class="text-slate-400 font-mono">○ Standby</span></div>
       </div>
     </aside>
 
@@ -121,25 +121,41 @@
     <main class="flex-1 bg-[#0B0F19] rounded-xl border border-slate-800/80 flex flex-col justify-between overflow-hidden shadow-xl relative">
       
       <!-- Top Titlebar / Action Controls -->
-      <header class="px-5 py-3 border-b border-slate-800/60 flex items-center justify-between">
+      <header class="px-5 py-3 border-b border-slate-800/60 flex items-center justify-between select-none">
         <div class="flex items-center space-x-2 text-xs">
-          <span id="connection-dot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
-          <span id="connection-text" class="text-slate-300 font-medium">ZARVIS Online</span>
+          <span id="connection-dot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+          <span id="connection-text" class="text-slate-300 font-medium">Connecting...</span>
           <span class="text-slate-600">•</span>
           <span class="text-slate-500 font-mono text-[11px]">127.0.0.1:3000</span>
         </div>
 
-        <div class="flex items-center space-x-2.5">
-          <button id="btn-scan-screen" title="Scan Screen" class="px-2.5 py-1 text-xs bg-slate-800/80 hover:bg-slate-700 text-slate-300 rounded-md flex items-center gap-1.5 border border-slate-700/60 transition-all">
+        <div class="flex items-center space-x-2">
+          <button id="btn-scan-screen" title="Scan Screen" class="px-2.5 py-1 text-xs bg-slate-800/80 hover:bg-slate-700 text-slate-300 rounded-md flex items-center gap-1.5 border border-slate-700/60 transition-all cursor-pointer">
             <svg class="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
             <span>Scan Screen</span>
           </button>
-          <button id="btn-pin-toggle" title="Pin / Always on top" class="p-1.5 text-slate-400 hover:text-white rounded transition-all">
+          <button id="btn-pin-toggle" title="Pin / Always on top" class="p-1.5 text-slate-400 hover:text-white rounded hover:bg-slate-800 transition-all cursor-pointer">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>
           </button>
-          <button id="btn-switch-hud" title="Switch to Compact HUD" class="p-1.5 text-slate-400 hover:text-white rounded transition-all">
+          <button id="btn-switch-hud" title="Switch to Compact HUD" class="p-1.5 text-slate-400 hover:text-white rounded hover:bg-slate-800 transition-all cursor-pointer">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
           </button>
+
+          <div class="h-4 w-[1px] bg-slate-800 mx-1"></div>
+
+          <!-- Window Controls -->
+          <div class="flex items-center space-x-1">
+            <button id="btn-window-minimize" title="Minimize Window" class="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition-all cursor-pointer">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/></svg>
+            </button>
+            <button id="btn-window-maximize" title="Maximize / Restore" class="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition-all cursor-pointer">
+              <svg id="icon-window-maximize" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2" stroke-width="2"/></svg>
+              <svg id="icon-window-restore" class="w-3.5 h-3.5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 4h10a2 2 0 012 2v10m-4-6h6m-12 4H4a2 2 0 01-2-2V8a2 2 0 012-2h6a2 2 0 012 2v6a2 2 0 01-2 2z"/></svg>
+            </button>
+            <button id="btn-window-close" title="Close Window" class="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/15 rounded transition-all cursor-pointer">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+          </div>
         </div>
       </header>
 
@@ -169,7 +185,7 @@
               id="hero-voice-btn"
               class="group relative flex items-center gap-3 px-6 py-3 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-medium text-sm shadow-[0_4px_20px_rgba(10,132,255,0.3)] transition-all active:scale-95 cursor-pointer"
             >
-              <svg id="hero-mic-svg" class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 02-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
+              <svg id="hero-mic-svg" class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 0 1-7 7m0 0a7 7 0 0 1-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 0 1-3-3V5a3 3 0 1 1 6 0v6a3 3 0 0 1-3 3z"/></svg>
               <span id="hero-mic-text">Tap to speak or Hold for PTT</span>
             </button>
             <div class="text-[11px] text-slate-500 flex items-center gap-1.5">
@@ -364,6 +380,37 @@
         <button id="safety-modal-approve" class="px-5 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg font-medium shadow-md transition-all">
           Approve Action
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL: BACKEND DIAGNOSTICS & RUNTIME UNAVAILABLE                           -->
+  <!-- ========================================================================= -->
+  <div id="modal-diagnostics" class="hidden fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div class="bg-[#121927] border border-red-500/50 rounded-2xl p-6 w-full max-w-lg shadow-2xl text-xs space-y-4">
+      <div class="flex items-center space-x-3 text-red-400 font-semibold text-sm">
+        <span class="w-8 h-8 rounded-full bg-red-500/20 border border-red-500/40 flex items-center justify-center text-lg">⚠️</span>
+        <span>ZARVIS — Backend Services Unavailable</span>
+      </div>
+      <p class="text-slate-300 text-xs leading-relaxed" id="diagnostic-message">
+        One or more required background runtimes could not be started.
+      </p>
+      <div id="diagnostic-details-box" class="bg-[#0A0E17] border border-slate-800 rounded-lg p-3 font-mono text-[11px] text-slate-400 max-h-48 overflow-y-auto space-y-1">
+        <div>Checking runtime diagnostics...</div>
+      </div>
+      <div class="flex items-center justify-between pt-2">
+        <button id="btn-diag-copy" class="text-slate-400 hover:text-slate-200 text-[11px] flex items-center gap-1 cursor-pointer">
+          <span>Copy Diagnostics</span>
+        </button>
+        <div class="flex items-center space-x-3">
+          <button id="btn-diag-close" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg font-medium transition-colors cursor-pointer">
+            Dismiss
+          </button>
+          <button id="btn-diag-retry" class="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium shadow-md transition-all cursor-pointer">
+            Retry Connection
+          </button>
+        </div>
       </div>
     </div>
   </div>

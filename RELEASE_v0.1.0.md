@@ -2,7 +2,7 @@
 
 **Release Date:** September 16, 2026  
 **Target Platform:** Windows 10 & 11 (x64)  
-**Status:** Complete & Verified (475 / 475 Tests Passing)
+**Status:** Complete & Verified (481 / 481 Tests Passing — 0 Failures)
 
 ---
 
@@ -16,14 +16,15 @@
 
 | Asset | Size | SHA-256 Checksum |
 | :--- | :--- | :--- |
-| **`ZARVIS-Setup-0.1.0.exe`** | 80,705,198 bytes (~76.9 MB) | `DC080760C2604BFAABC48AFC029EC9E18FA3DB90CDC7C671A73E8C82DF22E208` |
-| **`SHA256SUMS.txt`** | 87 bytes | `037ba3fafe3990e1fceebcbf9754ecad1e0b04a9197c36a6e7c7e5cb5b2633bf` |
+| **`ZARVIS-Setup-0.1.0.exe`** (NSIS Installer) | 139,572,272 bytes (~133.1 MB) | `250890c64647307e0c625cafb71800ea9cd3000c6ff1854229686d5c6f308f0d` |
+| **`ZARVIS 0.1.0.exe`** (Portable Executable) | 139,300,916 bytes (~132.8 MB) | `11cefafef7285f4f23df0b79728bce0c5d9b67d99d343bfaedd0f07da66c588c` |
+| **`SHA256SUMS.txt`** | 173 bytes | `8fa548981f3c3938361b9e07504e933f7c32bf0082333cf483e30e6beeeef924` |
 
 ### Checksum Verification
 In Windows PowerShell:
 ```powershell
 (Get-FileHash .\ZARVIS-Setup-0.1.0.exe -Algorithm SHA256).Hash
-# Expected: DC080760C2604BFAABC48AFC029EC9E18FA3DB90CDC7C671A73E8C82DF22E208
+# Expected: 250890c64647307e0c625cafb71800ea9cd3000c6ff1854229686d5c6f308f0d
 ```
 
 ---
@@ -80,4 +81,6 @@ In Windows PowerShell:
 2. **Audio Hardware Permissions:** Live speech recognition and synthesis require granting microphone access in Windows Privacy Settings.
 3. **Local Loopback Firewall Dialog:** Windows Firewall may prompt on first launch to allow local loopback socket traffic (`127.0.0.1:8765`).
 4. **Upstream Dependency Advisory:** The application is packaged with Electron 33.x. Upstream Chromium/Electron advisories reported by `npm audit` are mitigated via application architecture (Chromium sandbox, context isolation, strict CSP, navigation lockdown, and loopback confinement). Major migration to Electron 44+ is deferred to avoid breaking changes.
+5. **YouTube & Media Intent Status:** Specific natural-language media automation intents (e.g. 'Play song on YouTube') are audited and marked **NOT IMPLEMENTED** in v0.1.0 to avoid unreliable, ungrounded browser scraping without user review.
+6. **Self-Contained Standalone Runtime:** The installer packages Python 3.12 and Node.js runtimes internally into `resources/`. End users do not need Python or Node installed on Windows.
 
