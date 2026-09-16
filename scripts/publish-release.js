@@ -79,6 +79,26 @@ async function main() {
   if (getRes.statusCode === 200) {
     release = getRes.data;
     console.log(`Found existing release: ID ${release.id}`);
+    console.log("Updating release body and name...");
+    const updateBody = JSON.stringify({
+      name: RELEASE_NAME,
+      body: notesContent,
+    });
+    await request(
+      {
+        hostname: "api.github.com",
+        path: `/repos/${OWNER}/${REPO}/releases/${release.id}`,
+        method: "PATCH",
+        headers: {
+          "User-Agent": "ZARVIS-Release-Script",
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github+json",
+          "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(updateBody),
+        },
+      },
+      updateBody
+    );
   } else {
     console.log("Creating new GitHub release...");
     const createBody = JSON.stringify({
@@ -120,12 +140,23 @@ async function main() {
   // Helper to upload assets
   async function uploadFile(filePath, contentType) {
     const fileName = path.basename(filePath);
-    console.log(`Uploading ${fileName}...`);
+    console.log(`\nPreparing ${fileName}...`);
     const fileStats = fs.statSync(filePath);
 
-    // Delete existing asset with same name if present
-    if (release.assets && Array.isArray(release.assets)) {
-      const existing = release.assets.find((a) => a.name === fileName);
+    // Refresh live assets from GitHub
+    const assetsRes = await request({
+      hostname: "api.github.com",
+      path: `/repos/${OWNER}/${REPO}/releases/${releaseId}/assets`,
+      method: "GET",
+      headers: {
+        "User-Agent": "ZARVIS-Release-Script",
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.github+json",
+      },
+    });
+
+    if (assetsRes.statusCode === 200 && Array.isArray(assetsRes.data)) {
+      const existing = assetsRes.data.find((a) => a.name === fileName);
       if (existing) {
         console.log(`Deleting duplicate existing asset (ID: ${existing.id})...`);
         await request({
@@ -138,42 +169,44 @@ async function main() {
             Accept: "application/vnd.github+json",
           },
         });
+        // Small pause after deletion
+        await new Promise((res) => setTimeout(res, 2000));
       }
     }
 
-    return new Promise((resolve, reject) => {
-      const options = {
-        hostname: "uploads.github.com",
-        path: `/repos/${OWNER}/${REPO}/releases/${releaseId}/assets?name=${encodeURIComponent(fileName)}`,
-        method: "POST",
-        headers: {
-          "User-Agent": "ZARVIS-Release-Script",
-          Authorization: `Bearer ${token}`,
-          Accept: "application/vnd.github+json",
-          "Content-Type": contentType,
-          "Content-Length": fileStats.size,
-        },
-      };
+    console.log(`Uploading ${fileName} (${(fileStats.size / (1024 * 1024)).toFixed(1)} MB) via curl.exe...`);
+    const uploadUrl = `https://uploads.github.com/repos/${OWNER}/${REPO}/releases/${releaseId}/assets?name=${encodeURIComponent(fileName)}`;
 
-      const req = https.request(options, (res) => {
-        let respData = "";
-        res.on("data", (chunk) => (respData += chunk));
-        res.on("end", () => {
-          if (res.statusCode === 201) {
-            console.log(`Uploaded ${fileName} successfully!`);
-            resolve(JSON.parse(respData));
-          } else {
-            console.error(`Upload error for ${fileName} (${res.statusCode}):`, respData);
-            reject(new Error(`Failed to upload ${fileName}`));
-          }
-        });
+    const curlCmd = [
+      "curl.exe",
+      "-sS",
+      "--fail-with-body",
+      "--connect-timeout", "30",
+      "--max-time", "600",
+      "--retry", "3",
+      "--retry-delay", "5",
+      "-X", "POST",
+      "-H", "User-Agent: ZARVIS-Release-Script",
+      "-H", `Authorization: Bearer ${token}`,
+      "-H", "Accept: application/vnd.github+json",
+      "-H", `Content-Type: ${contentType}`,
+      "--data-binary", `@${filePath}`,
+      uploadUrl,
+    ];
+
+    try {
+      const result = execSync(curlCmd.map((arg) => (arg.startsWith("@") || arg.includes(" ") || arg.includes(":") || arg.includes("?")) ? `"${arg}"` : arg).join(" "), {
+        encoding: "utf-8",
+        maxBuffer: 20 * 1024 * 1024,
       });
-
-      req.on("error", reject);
-
-      const stream = fs.createReadStream(filePath);
-      stream.pipe(req);
-    });
+      console.log(`Uploaded ${fileName} successfully!`);
+      return JSON.parse(result);
+    } catch (err) {
+      console.error(`Curl upload failed for ${fileName}:`, err.message);
+      if (err.stdout) console.error("Stdout:", err.stdout);
+      if (err.stderr) console.error("Stderr:", err.stderr);
+      throw err;
+    }
   }
 
   // 1. Upload SHA256SUMS.txt
@@ -188,6 +221,14 @@ async function main() {
     await uploadFile(installerPath, "application/vnd.microsoft.portable-executable");
   } else {
     console.error("Installer not found at:", installerPath);
+  }
+
+  // 3. Upload Portable Executable
+  const portablePath = path.join(__dirname, "..", "apps", "desktop", "release", "ZARVIS 0.1.0.exe");
+  if (fs.existsSync(portablePath)) {
+    await uploadFile(portablePath, "application/vnd.microsoft.portable-executable");
+  } else {
+    console.warn("Portable executable not found at:", portablePath);
   }
 
   console.log("\n========================================================");
