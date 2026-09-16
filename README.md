@@ -17,7 +17,7 @@
 ZARVIS is built under strict **Software Development Lifecycle (SDLC) governance**:
 > **"Requirements first. Design second. Code third. Verification always."**
 
-Every phase adheres to the **Mandatory Quality Gates** codified in [ENGINEERING_STANDARDS.md](file:///c:/ZARVIS/docs/ENGINEERING_STANDARDS.md). Every capability is backed by real execution, security confinement, and automated tests.
+Every phase adheres to the **Mandatory Quality Gates** codified in [ENGINEERING_STANDARDS.md](docs/ENGINEERING_STANDARDS.md). Every capability is backed by real execution, security confinement, and automated tests.
 
 ---
 
@@ -88,10 +88,10 @@ zarvis/
 * **npm 10+** (Detected: 10.9.8)
 
 ### 1. Install Dependencies
-```bash
+```powershell
 # Setup Python virtualenv and install python-core in editable mode
 python -m venv .venv
-.venv\Scripts\pip install -e "services/python-core[dev]"
+.\.venv\Scripts\pip install -e "services/python-core[dev]"
 
 # Install Node monorepo packages
 npm install
@@ -99,23 +99,27 @@ npm run build
 ```
 
 ### 2. Run Test Suites
-```bash
-# Run all automated tests (Protocol + Node Gateway + Python Core)
+```powershell
+# Run all automated tests (Protocol + Node Gateway + Desktop + Python Core)
 npm test
 
 # Run individual test suites
 npm run test:protocol   # Shared protocol contract tests
 npm run test:gateway    # Node Gateway tests
+npm run test:desktop    # Electron Desktop Client & E2E tests
 npm run test:python     # Python Core pytest suite
 ```
 
-### 3. Start Services (Locally)
-```bash
-# Start Python Core Daemon
+### 3. Start Services (Locally for Development)
+```powershell
+# Terminal 1: Start Python Core Daemon
 npm run start:python
 
-# Start Node Gateway (in another terminal)
+# Terminal 2: Start Node Gateway
 npm run start:gateway
+
+# Terminal 3: Start Desktop Client UI
+npm run start:desktop
 ```
 
 Health endpoint: `http://127.0.0.1:3000/health`  
@@ -334,7 +338,7 @@ Phase 10 connects Python Core and Node.js Gateway via a production-grade, headle
 * **Mandatory Handshake:** Protocol negotiation via `ipc.handshake` before accepting commands.
 * **Fault Tolerance & Heartbeats:** 10-second keepalive heartbeats, automatic state degradation, and jittered exponential backoff reconnection.
 * **Bidirectional Event Streaming:** Seamlessly forwards Python Core `AsyncEventBus` notifications to Node Gateway and active WebSocket clients.
-* **Enterprise Security & Observability:** Strict loopback binding, sensitive data scrubbing, timeout controls, concurrency caps, and live metrics via `system.diagnostics`.
+* **Production Security & Observability:** Strict loopback binding, sensitive data scrubbing, timeout controls, concurrency caps, and live metrics via `system.diagnostics`.
 
 ---
 

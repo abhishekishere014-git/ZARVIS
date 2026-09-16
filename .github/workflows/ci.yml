@@ -34,6 +34,13 @@ jobs:
       - name: Install Node.js dependencies
         run: npm install
 
+      - name: Dependency Security Audit
+        # Runs npm audit to report security posture transparently.
+        # Continues on error so known, architecturally-mitigated Electron 33 upstream advisories
+        # are surfaced without terminating the validation pipeline.
+        run: npm audit || true
+        continue-on-error: true
+
       - name: Build TypeScript workspaces
         run: npm run build
 

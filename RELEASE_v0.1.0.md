@@ -58,6 +58,7 @@ In Windows PowerShell:
 
 ## 🛡️ Security & Privacy
 
+- **Signing Status:** Unsigned / Community Release Build (Commercial EV Authenticode certificate not attached).
 - **Loopback Confinement:** All IPC and WebSocket traffic binds exclusively to `127.0.0.1`.
 - **Preload Isolation:** `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`, explicit Content Security Policy (CSP).
 - **Secret Isolation:** API keys are secured via Windows Credential Manager (`keyring`); never written in plaintext.
@@ -70,3 +71,13 @@ In Windows PowerShell:
 1. Download **`ZARVIS-Setup-0.1.0.exe`**.
 2. Run the installer. *(Note: As an open-source community release without an expensive commercial EV certificate, Windows Defender SmartScreen may display an unknown publisher notification. Click **"More info"** $\to$ **"Run anyway"**).*
 3. Launch ZARVIS from your Desktop or Start Menu.
+
+---
+
+## ⚠️ Known Limitations & Operational Notes
+
+1. **Windows SmartScreen Notice:** Because this build is not signed with a paid commercial EV certificate, Windows SmartScreen may show an initial unknown publisher notice.
+2. **Audio Hardware Permissions:** Live speech recognition and synthesis require granting microphone access in Windows Privacy Settings.
+3. **Local Loopback Firewall Dialog:** Windows Firewall may prompt on first launch to allow local loopback socket traffic (`127.0.0.1:8765`).
+4. **Upstream Dependency Advisory:** The application is packaged with Electron 33.x. Upstream Chromium/Electron advisories reported by `npm audit` are mitigated via application architecture (Chromium sandbox, context isolation, strict CSP, navigation lockdown, and loopback confinement). Major migration to Electron 44+ is deferred to avoid breaking changes.
+

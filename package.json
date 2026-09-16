@@ -2,7 +2,7 @@
   "name": "jarvis-platform",
   "version": "0.1.0",
   "private": true,
-  "description": "JARVIS - Modular Hybrid AI Desktop Assistant Platform",
+  "description": "ZARVIS - Local-First Intelligent Windows Desktop Assistant",
   "workspaces": [
     "packages/*",
     "services/node-gateway",
