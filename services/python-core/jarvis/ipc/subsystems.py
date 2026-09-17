@@ -59,10 +59,17 @@ class SubsystemRegistry:
 
         logger.info("Executing agent goal via IPC: '%s'", goal[:80])
         if not self.agent_orchestrator:
+            # No AI backend configured — acknowledge the user's request in Hindi
+            # and report what we understood
             return {
                 "run_id": f"run_fallback_{int(time.time())}",
                 "status": "completed",
-                "summary": f"Autonomous Agent Runtime received goal: '{goal}'.",
+                "summary": (
+                    f"Aapka sandesh mila: \"{goal}\". "
+                    "Abhi main ek basic mode mein hoon aur AI backend se connect nahi hun. "
+                    "Lekin main sunne ke liye hamesha taiyar hoon! "
+                    "Kya aap koi aur kaam bata sakte hain?"
+                ),
                 "task_statistics": {"total": 1, "completed": 1},
                 "execution_time_sec": 0.01,
             }

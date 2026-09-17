@@ -483,44 +483,148 @@ export class ZarvisApp {
     this.stopListening();
   }
 
+  // ─── Web Speech API state ─────────────────────────────────────────────────
+  private speechRecognizer: any = null;
+  private speechRecognizerActive = false;
+
   public async startListening(mode: "tap" | "hold"): Promise<void> {
+    if (this.isMuted) {
+      this.store.addMessage({
+        id: `msg_sys_${Date.now()}`,
+        sender: "assistant",
+        text: "🔇 Microphone band hai. Pehle unmute karein.",
+        timestamp: new Date().toLocaleTimeString(),
+      });
+      return;
+    }
+
     this.store.setAssistantState("LISTENING", mode);
-    this.store.setTranscription("Listening...");
+    this.store.setTranscription("सुन रहा हूँ...");
     window.zarvis?.voice.notifyStateChange("Listening...");
     window.zarvis?.tray.updateStatus("Listening...");
 
-    this.audioChunks = [];
-    if (typeof navigator !== "undefined" && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        this.mediaStream = stream;
-        const recorder = new (window as any).MediaRecorder(stream);
-        recorder.ondataavailable = (e: any) => {
-          if (e.data && e.data.size > 0) {
-            this.audioChunks.push(e.data);
+    // ── Use Web Speech API (SpeechRecognition) — natively supported in Electron/Chromium
+    const SpeechRecognitionCtor =
+      (window as any).SpeechRecognition ||
+      (window as any).webkitSpeechRecognition;
+
+    if (!SpeechRecognitionCtor) {
+      // Fallback: prompt user to type
+      this.store.setAssistantState("IDLE");
+      this.store.addMessage({
+        id: `msg_sys_${Date.now()}`,
+        sender: "assistant",
+        text: "❌ Is device par voice recognition support nahi hai. Please text type karein.",
+        timestamp: new Date().toLocaleTimeString(),
+      });
+      return;
+    }
+
+    try {
+      this.speechRecognizer = new SpeechRecognitionCtor();
+      this.speechRecognizer.lang = "hi-IN";          // Hindi primary
+      this.speechRecognizer.interimResults = true;   // Show partial results live
+      this.speechRecognizer.maxAlternatives = 1;
+      this.speechRecognizer.continuous = (mode === "hold");
+
+      let finalTranscript = "";
+      let interimTranscript = "";
+
+      this.speechRecognizer.onresult = (event: any) => {
+        interimTranscript = "";
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const result = event.results[i];
+          if (result.isFinal) {
+            finalTranscript += result[0].transcript;
+          } else {
+            interimTranscript += result[0].transcript;
           }
-        };
-        recorder.start(100);
-        this.mediaRecorder = recorder;
-      } catch (err) {
-        // Fallback for environments without physical mic access
-      }
+        }
+        // Show live transcription
+        const live = finalTranscript + interimTranscript;
+        this.store.setTranscription(live || "सुन रहा हूँ...");
+        const box = document.getElementById("live-transcription-box");
+        if (box) box.textContent = `"${live}"`;
+      };
+
+      this.speechRecognizer.onend = () => {
+        this.speechRecognizerActive = false;
+        const transcript = finalTranscript.trim();
+        if (transcript) {
+          this.processVoiceTranscript(transcript);
+        } else {
+          // Nothing heard
+          this.store.setAssistantState("IDLE");
+          this.store.setTranscription("Kuch sunayi nahi diya...");
+          this.store.addMessage({
+            id: `msg_sys_${Date.now()}`,
+            sender: "assistant",
+            text: "🎙️ Kuch sunai nahi diya. Phir se boliye ya type karein.",
+            timestamp: new Date().toLocaleTimeString(),
+          });
+        }
+      };
+
+      this.speechRecognizer.onerror = (event: any) => {
+        this.speechRecognizerActive = false;
+        const errCode: string = event.error || "unknown";
+        let userMsg = "❌ Kuch technical samasya aayi. Phir koshish karein.";
+        if (errCode === "not-allowed" || errCode === "permission-denied") {
+          userMsg = "🔒 Microphone ki permission nahi mili. Browser/Electron settings mein allow karein.";
+        } else if (errCode === "no-speech") {
+          userMsg = "🎙️ Koi awaaz nahi aayi. Mic check karein aur phir boliye.";
+        } else if (errCode === "audio-capture") {
+          userMsg = "🎙️ Microphone available nahi hai ya dusre app ne use kar rakha hai.";
+        } else if (errCode === "network") {
+          userMsg = "🌐 Network error. Offline mode mein voice recognition nahi chalega.";
+        } else if (errCode === "aborted") {
+          this.store.setAssistantState("IDLE");
+          return;
+        }
+        this.store.setAssistantState("IDLE");
+        this.store.addMessage({
+          id: `msg_err_${Date.now()}`,
+          sender: "assistant",
+          text: userMsg,
+          timestamp: new Date().toLocaleTimeString(),
+        });
+      };
+
+      this.speechRecognizer.start();
+      this.speechRecognizerActive = true;
+
+    } catch (err: any) {
+      this.store.setAssistantState("IDLE");
+      this.store.addMessage({
+        id: `msg_err_${Date.now()}`,
+        sender: "assistant",
+        text: `❌ Microphone start nahi ho saka: ${err?.message || err}`,
+        timestamp: new Date().toLocaleTimeString(),
+      });
     }
   }
 
   public async stopListening(): Promise<void> {
+    // Stop the Web Speech recognizer gracefully — onend fires automatically with transcript
+    if (this.speechRecognizer && this.speechRecognizerActive) {
+      this.speechRecognizerActive = false;
+      try {
+        this.speechRecognizer.stop(); // triggers onresult(final) then onend
+      } catch {}
+      return;
+    }
+
+    // Legacy MediaRecorder path (kept as fallback for hold-mode raw audio)
     this.store.setAssistantState("THINKING");
-    this.store.setTranscription("Processing speech buffer...");
+    this.store.setTranscription("Samajh raha hoon...");
     window.zarvis?.voice.notifyStateChange("Thinking...");
     window.zarvis?.tray.updateStatus("Thinking...");
 
     if (this.isMuted) {
-      this.store.setTranscription("Microphone is muted.");
+      this.store.setTranscription("Microphone band hai.");
       this.store.setAssistantState("IDLE");
       return;
     }
-
-    let audioBase64 = "";
 
     if (this.mediaRecorder && this.mediaRecorder.state !== "inactive") {
       try {
@@ -528,43 +632,93 @@ export class ZarvisApp {
           this.mediaRecorder.onstop = () => resolve();
           this.mediaRecorder.stop();
         });
-
         if (this.mediaStream) {
           this.mediaStream.getTracks().forEach((track: any) => track.stop());
           this.mediaStream = null;
         }
-
-        if (this.audioChunks.length > 0) {
-          const audioBlob = new Blob(this.audioChunks, { type: "audio/webm" });
-          const buffer = await audioBlob.arrayBuffer();
-          const bytes = new Uint8Array(buffer);
-          let binary = "";
-          for (let i = 0; i < bytes.byteLength; i++) {
-            binary += String.fromCharCode(bytes[i]);
-          }
-          audioBase64 = btoa(binary);
-        }
-      } catch {
-        // Gracefully proceed if audio buffer conversion fails
-      }
+      } catch {}
       this.mediaRecorder = null;
     }
 
+    this.store.setAssistantState("IDLE");
+  }
+
+  /**
+   * Core voice processing: takes a transcribed text string → agent execution → Hindi spoken response.
+   * This is called after Web Speech API fires the final transcript.
+   */
+  private async processVoiceTranscript(transcript: string): Promise<void> {
+    const timeStr = new Date().toLocaleTimeString();
+
+    // 1. Show user said something in chat
+    this.store.addMessage({
+      id: `msg_voice_u_${Date.now()}`,
+      sender: "user",
+      text: `🎙️ ${transcript}`,
+      timestamp: timeStr,
+    });
+    this.store.addActivity({
+      id: `act_voice_${Date.now()}`,
+      title: "Voice Input",
+      category: "command",
+      description: transcript,
+      timestamp: timeStr,
+    });
+
+    // Switch to chat view so user sees the conversation
+    this.switchTab("chat");
+    this.store.setAssistantState("THINKING");
+    this.store.setTranscription(transcript);
+
     try {
-      const resp = await this.gateway.sendRequest("voice.interact", {
-        audio_base64: audioBase64 || undefined,
-        text: audioBase64 ? undefined : "Voice command triggered from desktop client",
-      });
+      // 2. Send transcript to Python Core agent runtime
+      const resp = await this.gateway.sendRequest("agent.execute", { goal: transcript });
 
       if (resp.success && resp.payload) {
         const payload = resp.payload as Record<string, any>;
-        const speechText = payload.text || "Voice pipeline operational.";
-        this.store.setTranscription(speechText);
-        await this.startSpeaking(speechText, payload.audio_base64);
+        const isSuccess = payload.status === "completed" || payload.status === undefined;
+        const rawSummary = payload.summary || (isSuccess ? "Kaam ho gaya." : "Kuch galat hua.");
+        const stats = payload.task_statistics
+          ? ` (${payload.task_statistics.completed ?? 0}/${payload.task_statistics.total ?? 0} tasks)`
+          : "";
+        const responseText = (isSuccess ? rawSummary : `Kuch samasya aayi: ${rawSummary}`) + stats;
+
+        // 3. Show assistant message
+        this.store.addMessage({
+          id: `msg_voice_a_${Date.now()}`,
+          sender: "assistant",
+          text: responseText,
+          timestamp: new Date().toLocaleTimeString(),
+        });
+        this.store.addActivity({
+          id: `act_voice_res_${Date.now()}`,
+          title: isSuccess ? "Voice Task Complete" : "Voice Task Failed",
+          category: "agent",
+          description: rawSummary.slice(0, 80),
+          timestamp: new Date().toLocaleTimeString(),
+        });
+
+        // 4. Speak the response in Hindi
+        await this.startSpeaking(responseText);
+
       } else {
+        const errMsg = resp.error?.message || "Backend se koi jawab nahi mila.";
+        this.store.addMessage({
+          id: `msg_voice_err_${Date.now()}`,
+          sender: "assistant",
+          text: `❌ ${errMsg}`,
+          timestamp: new Date().toLocaleTimeString(),
+        });
         this.store.setAssistantState("IDLE");
       }
-    } catch {
+    } catch (err: any) {
+      const errMsg = err?.message || "Unknown error";
+      this.store.addMessage({
+        id: `msg_voice_err_${Date.now()}`,
+        sender: "assistant",
+        text: `❌ Voice command process nahi ho saka: ${errMsg}`,
+        timestamp: new Date().toLocaleTimeString(),
+      });
       this.store.setAssistantState("IDLE");
     }
   }
@@ -617,12 +771,44 @@ export class ZarvisApp {
       }
     }
 
-    // 3. Fallback to native Chromium SpeechSynthesis
+    // 3. Native Chromium SpeechSynthesis with Hindi voice
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       try {
         window.speechSynthesis.cancel();
         const utterance = new SpeechSynthesisUtterance(text);
-        utterance.rate = 1.0;
+
+        // ── Select the best available Hindi voice ──────────────────────────
+        const selectHindiVoice = () => {
+          const voices = window.speechSynthesis.getVoices();
+          // Priority: hi-IN exact → hi region → any Hindi → Microsoft Hindi neural → fallback
+          const priority = [
+            voices.find(v => v.lang === "hi-IN" && v.name.toLowerCase().includes("kalpana")),
+            voices.find(v => v.lang === "hi-IN" && v.name.toLowerCase().includes("neural")),
+            voices.find(v => v.lang === "hi-IN"),
+            voices.find(v => v.lang.startsWith("hi")),
+            voices.find(v => v.name.toLowerCase().includes("hindi")),
+          ];
+          return priority.find(Boolean) ?? null;
+        };
+
+        utterance.lang = "hi-IN";
+        utterance.rate = 0.92;   // Slightly slower — cleaner Hindi diction
+        utterance.pitch = 1.05;  // Slightly warmer pitch
+        utterance.volume = 1.0;
+
+        // Voices may not be loaded yet — try immediately then via voiceschanged
+        const hindiVoice = selectHindiVoice();
+        if (hindiVoice) {
+          utterance.voice = hindiVoice;
+        } else {
+          // Wait for voices to load then re-select
+          window.speechSynthesis.addEventListener("voiceschanged", () => {
+            const v = selectHindiVoice();
+            if (v) utterance.voice = v;
+          }, { once: true });
+        }
+        // ─────────────────────────────────────────────────────────────────
+
         utterance.onend = () => {
           if (this.store.getState().assistantState === "SPEAKING") {
             this.store.setAssistantState("IDLE");

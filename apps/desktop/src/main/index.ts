@@ -4,7 +4,7 @@
  * and Child Process Lifecycle Supervision (Python Core & Node Gateway).
  */
 
-import { app, ipcMain } from "electron";
+import { app, ipcMain, session } from "electron";
 import * as path from "node:path";
 import { WindowManager } from "./window-manager";
 import { SystemTrayManager } from "./tray";
@@ -12,6 +12,12 @@ import { HotkeyManager } from "./hotkeys";
 import { NotificationManager, NotificationPayload } from "./notifications";
 import { ProcessSupervisor, ServiceConfig } from "./supervisor";
 import { RuntimeResolver } from "./runtime-resolver";
+
+// ── Enable Web Speech API (SpeechRecognition + SpeechSynthesis) ──────────────
+// Required flags for Chromium's speech recognition service to work in Electron
+app.commandLine.appendSwitch("enable-speech-input");
+app.commandLine.appendSwitch("enable-features", "SpeechRecognitionAPI");
+// ─────────────────────────────────────────────────────────────────────────────
 
 const gotTheLock = app.requestSingleInstanceLock();
 
@@ -215,6 +221,16 @@ if (!gotTheLock) {
 
     // 5. Create Main Window
     windowManager.createWindow();
+
+    // Grant microphone + speech recognition permissions to local packaged UI
+    session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+      const allowedPermissions = ["media", "microphone", "speech-synthesis", "clipboard-read"];
+      if (allowedPermissions.includes(permission)) {
+        callback(true);
+      } else {
+        callback(false);
+      }
+    });
 
     // 6. Validate runtimes before spawning and notify UI if any files missing
     const validation = runtimeResolver.validateAll();
