@@ -222,6 +222,20 @@ export class ZarvisApp {
       });
       this.store.setAssistantState("IDLE");
     });
+
+    // Home View — New Quick Action Buttons
+    document.getElementById("btn-view-all-activity")?.addEventListener("click", () => {
+      this.switchTab("activity");
+    });
+    document.getElementById("qa-settings-action")?.addEventListener("click", () => {
+      this.switchTab("settings");
+    });
+    document.getElementById("qa-activity-action")?.addEventListener("click", () => {
+      this.switchTab("activity");
+    });
+    document.getElementById("qa-minimize-action")?.addEventListener("click", () => {
+      window.zarvis?.window.minimize();
+    });
   }
 
   private setupPreloadBridge(): void {
@@ -890,61 +904,159 @@ export class ZarvisApp {
       if (hudStatus) hudStatus.textContent = state.assistantState === "IDLE" ? "Ready" : state.assistantState;
     }
 
-    // 2. Hero Voice Button & Orb
+    // 2. Hero Voice Button & Arc Reactor Orb
     const micBtn = document.getElementById("hero-voice-btn");
     const micText = document.getElementById("hero-mic-text");
-    const orb = document.getElementById("core-orb");
+    const orbOuter = document.getElementById("core-orb");            // .arc-ring-outer
+    const orbInner = orbOuter?.querySelector(".arc-ring-inner") as HTMLElement | null;
+    const orbGlyph = orbOuter?.querySelector(".arc-core-glyph") as HTMLElement | null;
+    const orbGlow  = orbOuter?.closest(".arc-reactor-container")?.querySelector(".arc-reactor-glow") as HTMLElement | null;
     const waveform = document.getElementById("live-waveform");
     const transcription = document.getElementById("live-transcription-box");
 
     if (state.assistantState === "LISTENING") {
       if (micBtn) {
         micBtn.className =
-          "group relative flex items-center gap-3 px-6 py-3 rounded-full bg-gradient-to-r from-emerald-600 to-emerald-500 text-white font-medium text-sm shadow-[0_0_25px_rgba(16,185,129,0.35)] transition-all cursor-pointer";
+          "btn-hero-glow w-full flex items-center justify-center gap-2.5 py-3 px-5 rounded-full text-white font-medium text-xs shadow-lg cursor-pointer";
+        micBtn.style.background = "linear-gradient(135deg,#059669,#10b981)";
+        micBtn.style.boxShadow = "0 0 28px rgba(16,185,129,0.45)";
       }
       if (micText) {
         micText.textContent =
           state.voiceMode === "hold" ? "Listening · Release to send" : "Listening... Tap to stop";
       }
-      if (orb) {
-        orb.className =
-          "w-28 h-28 rounded-full border border-emerald-500/60 bg-gradient-to-b from-emerald-500/20 to-transparent flex items-center justify-center transition-all shadow-[0_0_30px_rgba(16,185,129,0.3)]";
+      // Arc Reactor — Emerald/Cyan
+      if (orbOuter) {
+        orbOuter.style.borderColor = "rgba(16,185,129,0.7)";
+        orbOuter.style.boxShadow = "inset 0 0 18px rgba(16,185,129,0.25), 0 0 30px rgba(16,185,129,0.4)";
+      }
+      if (orbInner) {
+        orbInner.style.borderColor = "rgba(0,242,254,0.8)";
+        orbInner.style.boxShadow = "0 0 20px rgba(0,242,254,0.5)";
+        orbInner.classList.remove("spin-slow", "spin-fast");
+        orbInner.classList.add("spin-slow");
+      }
+      if (orbGlyph) {
+        orbGlyph.style.background = "linear-gradient(135deg,#059669,#00f2fe)";
+        orbGlyph.style.boxShadow = "0 0 20px rgba(0,242,254,0.8)";
+      }
+      if (orbGlow) {
+        orbGlow.style.background = "radial-gradient(circle,rgba(16,185,129,0.5) 0%,rgba(0,242,254,0.2) 45%,transparent 70%)";
       }
       waveform?.classList.remove("hidden");
       transcription?.classList.remove("hidden");
       if (transcription) transcription.textContent = `"${state.transcription}"`;
+
     } else if (state.assistantState === "THINKING") {
       if (micBtn) {
         micBtn.className =
-          "group relative flex items-center gap-3 px-6 py-3 rounded-full bg-blue-700 text-white font-medium text-sm shadow-md transition-all cursor-pointer";
+          "btn-hero-glow w-full flex items-center justify-center gap-2.5 py-3 px-5 rounded-full text-white font-medium text-xs shadow-lg cursor-pointer";
+        micBtn.style.background = "linear-gradient(135deg,#7c3aed,#a855f7)";
+        micBtn.style.boxShadow = "0 0 28px rgba(168,85,247,0.45)";
       }
       if (micText) micText.textContent = "Thinking & Planning...";
-      if (orb) {
-        orb.className =
-          "w-28 h-28 rounded-full border border-blue-500 animate-spin-slow bg-gradient-to-b from-blue-500/20 to-transparent flex items-center justify-center transition-all shadow-[0_0_30px_rgba(10,132,255,0.4)]";
+      // Arc Reactor — Purple/Violet, fast spin
+      if (orbOuter) {
+        orbOuter.style.borderColor = "rgba(168,85,247,0.7)";
+        orbOuter.style.boxShadow = "inset 0 0 18px rgba(168,85,247,0.25), 0 0 30px rgba(168,85,247,0.4)";
+      }
+      if (orbInner) {
+        orbInner.style.borderColor = "rgba(168,85,247,0.9)";
+        orbInner.style.boxShadow = "0 0 22px rgba(168,85,247,0.6)";
+        orbInner.classList.remove("spin-slow", "spin-fast");
+        orbInner.classList.add("spin-fast");
+      }
+      if (orbGlyph) {
+        orbGlyph.style.background = "linear-gradient(135deg,#7c3aed,#a855f7)";
+        orbGlyph.style.boxShadow = "0 0 22px rgba(168,85,247,0.9)";
+      }
+      if (orbGlow) {
+        orbGlow.style.background = "radial-gradient(circle,rgba(168,85,247,0.5) 0%,rgba(139,92,246,0.2) 45%,transparent 70%)";
       }
       waveform?.classList.add("hidden");
+
     } else if (state.assistantState === "SPEAKING") {
       if (micBtn) {
         micBtn.className =
-          "group relative flex items-center gap-3 px-6 py-3 rounded-full bg-sky-600 text-white font-medium text-sm shadow-[0_0_25px_rgba(56,189,248,0.35)] transition-all cursor-pointer";
+          "btn-hero-glow w-full flex items-center justify-center gap-2.5 py-3 px-5 rounded-full text-white font-medium text-xs shadow-lg cursor-pointer";
+        micBtn.style.background = "linear-gradient(135deg,#0284c7,#38bdf8)";
+        micBtn.style.boxShadow = "0 0 28px rgba(56,189,248,0.45)";
       }
       if (micText) micText.textContent = "Speaking... Tap to interrupt";
-      if (orb) {
-        orb.className =
-          "w-28 h-28 rounded-full border border-sky-400 bg-gradient-to-b from-sky-500/20 to-transparent flex items-center justify-center transition-all shadow-[0_0_35px_rgba(56,189,248,0.4)]";
+      // Arc Reactor — Sky Blue
+      if (orbOuter) {
+        orbOuter.style.borderColor = "rgba(56,189,248,0.7)";
+        orbOuter.style.boxShadow = "inset 0 0 18px rgba(56,189,248,0.25), 0 0 35px rgba(56,189,248,0.5)";
+      }
+      if (orbInner) {
+        orbInner.style.borderColor = "rgba(56,189,248,0.85)";
+        orbInner.style.boxShadow = "0 0 20px rgba(56,189,248,0.5)";
+        orbInner.classList.remove("spin-slow", "spin-fast");
+        orbInner.classList.add("spin-slow");
+      }
+      if (orbGlyph) {
+        orbGlyph.style.background = "linear-gradient(135deg,#0284c7,#38bdf8)";
+        orbGlyph.style.boxShadow = "0 0 22px rgba(56,189,248,0.9)";
+      }
+      if (orbGlow) {
+        orbGlow.style.background = "radial-gradient(circle,rgba(56,189,248,0.5) 0%,rgba(14,165,233,0.2) 45%,transparent 70%)";
       }
       waveform?.classList.remove("hidden");
-    } else {
-      // IDLE or ERROR
+
+    } else if (state.assistantState === "OFFLINE") {
       if (micBtn) {
         micBtn.className =
-          "group relative flex items-center gap-3 px-6 py-3 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-medium text-sm shadow-[0_4px_20px_rgba(10,132,255,0.3)] transition-all cursor-pointer";
+          "btn-hero-glow w-full flex items-center justify-center gap-2.5 py-3 px-5 rounded-full text-white font-medium text-xs shadow-lg cursor-pointer";
+        micBtn.style.background = "linear-gradient(135deg,#991b1b,#ef4444)";
+        micBtn.style.boxShadow = "0 0 25px rgba(239,68,68,0.4)";
       }
-      if (micText) micText.textContent = "Tap to speak or Hold for PTT";
-      if (orb) {
-        orb.className =
-          "w-28 h-28 rounded-full border border-blue-500/20 bg-gradient-to-b from-blue-500/10 to-transparent flex items-center justify-center transition-all";
+      if (micText) micText.textContent = "Backend Offline — Reconnecting...";
+      // Arc Reactor — Red/Error
+      if (orbOuter) {
+        orbOuter.style.borderColor = "rgba(239,68,68,0.7)";
+        orbOuter.style.boxShadow = "inset 0 0 18px rgba(239,68,68,0.2), 0 0 25px rgba(239,68,68,0.35)";
+      }
+      if (orbInner) {
+        orbInner.style.borderColor = "rgba(239,68,68,0.7)";
+        orbInner.style.boxShadow = "0 0 15px rgba(239,68,68,0.4)";
+        orbInner.classList.remove("spin-slow", "spin-fast");
+      }
+      if (orbGlyph) {
+        orbGlyph.style.background = "linear-gradient(135deg,#991b1b,#ef4444)";
+        orbGlyph.style.boxShadow = "0 0 18px rgba(239,68,68,0.7)";
+      }
+      if (orbGlow) {
+        orbGlow.style.background = "radial-gradient(circle,rgba(239,68,68,0.4) 0%,rgba(220,38,38,0.15) 45%,transparent 70%)";
+      }
+      waveform?.classList.add("hidden");
+      transcription?.classList.add("hidden");
+
+    } else {
+      // IDLE — Blue/Cyan default
+      if (micBtn) {
+        micBtn.className =
+          "btn-hero-glow w-full flex items-center justify-center gap-2.5 py-3 px-5 rounded-full text-white font-medium text-xs shadow-lg cursor-pointer";
+        micBtn.style.background = "";
+        micBtn.style.boxShadow = "";
+      }
+      if (micText) micText.textContent = "Hold / Click to Speak";
+      // Arc Reactor — Blue/Cyan (default CSS)
+      if (orbOuter) {
+        orbOuter.style.borderColor = "";
+        orbOuter.style.boxShadow = "";
+      }
+      if (orbInner) {
+        orbInner.style.borderColor = "";
+        orbInner.style.boxShadow = "";
+        orbInner.classList.remove("spin-fast");
+        orbInner.classList.add("spin-slow");
+      }
+      if (orbGlyph) {
+        orbGlyph.style.background = "";
+        orbGlyph.style.boxShadow = "";
+      }
+      if (orbGlow) {
+        orbGlow.style.background = "";
       }
       waveform?.classList.add("hidden");
       transcription?.classList.add("hidden");
