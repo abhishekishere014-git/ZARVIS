@@ -40,6 +40,15 @@ class KeyringVault(SecretVault):
 
     def __init__(self, service_name: str = JARVIS_KEYRING_SERVICE) -> None:
         self.service_name = service_name
+        import sys
+        if sys.platform == "win32":
+            try:
+                if keyring.get_keyring().priority <= 0:
+                    from keyring.backends.Windows import WinVaultKeyring
+                    keyring.set_keyring(WinVaultKeyring())
+                    logger.info("Initialized explicit WinVaultKeyring backend.")
+            except Exception as e:
+                logger.warning("Could not initialize explicit WinVaultKeyring: %s", e)
 
     def get_secret(self, key: str) -> Optional[str]:
         try:

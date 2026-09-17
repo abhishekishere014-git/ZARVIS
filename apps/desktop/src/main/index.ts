@@ -235,28 +235,29 @@ if (!gotTheLock) {
       });
     }
 
-    // 7. Start background services asynchronously (non-blocking)
+    // 7. Start background services asynchronously in parallel (non-blocking)
     (async () => {
       try {
+        const starts: Promise<any>[] = [];
         if (pyRuntime.exists) {
-          await supervisor.startService(pythonCoreConfig);
+          starts.push(supervisor.startService(pythonCoreConfig));
         }
         if (nodeRuntime.exists) {
-          await supervisor.startService(nodeGatewayConfig);
+          starts.push(supervisor.startService(nodeGatewayConfig));
         }
+        await Promise.all(starts);
       } catch (err) {
         console.warn("Service auto-start warning:", err);
       }
     })();
   });
 
-  app.on("before-quit", async (e) => {
-    if (supervisor) {
-      await supervisor.stopAll();
-    }
+  app.on("before-quit", () => {
+    supervisor?.stopAllSync();
   });
 
   app.on("will-quit", () => {
+    supervisor?.stopAllSync();
     hotkeyManager?.unregisterAll();
     trayManager?.destroy();
     windowManager?.destroy();

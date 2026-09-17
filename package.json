@@ -14,7 +14,7 @@
     "test:gateway": "npm test --workspace=@jarvis/node-gateway",
     "test:desktop": "npm test --workspace=@jarvis/desktop",
     "test:node": "npm run test:protocol && npm run test:gateway && npm run test:desktop",
-    "test:python": ".venv\\Scripts\\pytest tests/python",
+    "test:python": ".venv\\Scripts\\pytest tests/python --basetemp=.pytest_temp",
     "test": "npm run test:node && npm run test:python",
     "start:gateway": "npm start --workspace=@jarvis/node-gateway",
     "start:desktop": "npm start --workspace=@jarvis/desktop",

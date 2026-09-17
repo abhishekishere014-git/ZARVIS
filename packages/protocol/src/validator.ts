@@ -28,7 +28,7 @@ export const JarvisResponseSchema = z.object({
   version: ProtocolVersionSchema,
   timestamp: z.string().datetime({ offset: true }),
   success: z.boolean(),
-  payload: z.record(z.unknown()).optional(),
+  payload: z.record(z.unknown()).nullable().optional(),
   error: ProtocolErrorSchema.nullable().optional(),
 }).refine(
   (data) => {

@@ -123,7 +123,7 @@ async function stageAll() {
   console.log("Copying site-packages from:", venvSitePackages);
   if (fs.existsSync(venvSitePackages)) {
     copyDirRecursive(venvSitePackages, destSitePackages, (srcPath, entry) => {
-      return entry.name !== "__pycache__" && !entry.name.endsWith(".dist-info");
+      return entry.name !== "__pycache__";
     });
   }
 
@@ -164,7 +164,10 @@ async function stageAll() {
   console.log("Using Host Node executable:", hostNodeExe);
   fs.copyFileSync(hostNodeExe, path.join(nodeDest, "node.exe"));
 
-  // 4. Stage Node Gateway
+  // 4. Stage Node Gateway (bundled with esbuild for standalone execution)
+  console.log("Building self-contained node-gateway bundle...");
+  execSync("npm run build --workspace=@jarvis/node-gateway", { cwd: repoRoot, stdio: "inherit" });
+
   const nodeGatewayDest = path.join(buildResourcesDir, "node-gateway");
   console.log("\n[4/4] Staging Node Gateway into:", nodeGatewayDest);
   if (fs.existsSync(nodeGatewayDest)) {

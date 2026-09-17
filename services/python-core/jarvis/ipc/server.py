@@ -120,6 +120,7 @@ class IPCServer:
                 self._on_client_connected,
                 self.host,
                 self.port,
+                reuse_address=True,
             )
             if self.port == 0 and self._server.sockets:
                 self.port = self._server.sockets[0].getsockname()[1]

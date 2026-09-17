@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && esbuild src/index.ts --bundle --platform=node --target=node20 --outfile=dist/index.js",
     "start": "node dist/index.js",
     "test": "node --test dist/__tests__/**/*.test.js"
   },
@@ -15,6 +15,7 @@
     "ws": "^8.18.0"
   },
   "devDependencies": {
+    "esbuild": "^0.28.2",
     "typescript": "^5.5.4",
     "@types/node": "^20.14.10",
     "@types/ws": "^8.5.10"

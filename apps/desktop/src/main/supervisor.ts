@@ -242,6 +242,11 @@ export class ProcessSupervisor {
       this.removePidFile(config.name);
     });
 
+    child.stdout?.resume();
+    child.stdout?.on("data", () => {
+      // Drain stdout stream to prevent OS pipe buffer deadlocks on Windows
+    });
+
     child.stderr?.on("data", (chunk: Buffer) => {
       const text = chunk.toString("utf-8");
       const errList = this.serviceStderr.get(config.name) || [];
@@ -270,9 +275,9 @@ export class ProcessSupervisor {
       });
     }
 
-    // Wait for service port to become available (up to 8s for Python Core, 3.5s for Node Gateway)
+    // Wait for service port to become available (up to 15s for Python Core cold start, 5s for Node Gateway)
     let ready = false;
-    const maxChecks = config.name === "python-core" ? 80 : 35;
+    const maxChecks = config.name === "python-core" ? 150 : 50;
     for (let i = 0; i < maxChecks; i++) {
       if (this.serviceStates.get(config.name) === "FAILED") {
         break;
@@ -386,6 +391,22 @@ export class ProcessSupervisor {
       this.removePidFile(name);
     }
 
+    this.processes.clear();
+    this.pids.clear();
+  }
+
+  /**
+   * Synchronously and forcefully terminates all managed processes.
+   * Crucial for Electron before-quit / will-quit handlers to guarantee zero orphans.
+   */
+  public stopAllSync(): void {
+    this.isShuttingDown = true;
+    for (const [name, child] of this.processes.entries()) {
+      if (child.pid) {
+        this.killProcessTree(child.pid);
+      }
+      this.removePidFile(name);
+    }
     this.processes.clear();
     this.pids.clear();
   }

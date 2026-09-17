@@ -69,3 +69,4 @@ workspace/
 release/
 build-resources/
 .zarvis/
+.pytest_temp/
