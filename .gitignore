@@ -70,3 +70,4 @@ release/
 build-resources/
 .zarvis/
 .pytest_temp/
+.pytest_tmp/

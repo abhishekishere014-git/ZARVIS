@@ -26,6 +26,7 @@ from jarvis.os.tools.window_tools import (
     window_minimize,
     window_maximize,
     window_restore,
+    window_close,
 )
 from jarvis.os.tools.clipboard_tools import (
     clipboard_read,
@@ -33,6 +34,16 @@ from jarvis.os.tools.clipboard_tools import (
     clipboard_clear,
 )
 from jarvis.os.tools.system_tools import system_info
+from jarvis.os.tools.app_tools import (
+    app_launch,
+    app_focus,
+    app_close,
+)
+from jarvis.os.tools.file_tools import (
+    file_open_directory,
+    file_list_files,
+    file_create_text_file,
+)
 from jarvis.tools.registry import ToolRegistry
 
 
@@ -70,6 +81,9 @@ def register_os_tools(registry: ToolRegistry, os_manager: Optional[OSAutomationM
         set_active_os_manager(os_manager)
 
     for tool_fn in ALL_OS_TOOLS:
+        tool_def = getattr(tool_fn, "tool_definition", None)
+        if tool_def and registry.has(tool_def.id):
+            continue
         registry.register_tool(tool_fn)
 
 

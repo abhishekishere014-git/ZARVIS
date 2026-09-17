@@ -425,6 +425,9 @@ class WindowsOSProvider(OSProvider):
             cmd = SW_MAXIMIZE
         elif action == WindowAction.RESTORE or action == WindowAction.FOCUS:
             cmd = SW_RESTORE
+        elif action == WindowAction.CLOSE:
+            self._user32.PostMessageW(handle_id, 0x0010, 0, 0)
+            return True
 
         res = self._user32.ShowWindow(handle_id, cmd)
         if action == WindowAction.FOCUS:

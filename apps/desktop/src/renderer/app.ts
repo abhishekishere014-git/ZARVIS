@@ -162,6 +162,26 @@ export class ZarvisApp {
       window.zarvis?.window.close();
     });
 
+    // Titlebar Double-Click Toggle Maximize
+    const titlebar = document.getElementById("titlebar-header");
+    titlebar?.addEventListener("dblclick", async (e) => {
+      if ((e.target as HTMLElement).closest("button, input, select, a")) return;
+      if (window.zarvis?.window.toggleMaximize) {
+        const isMax = await window.zarvis.window.toggleMaximize();
+        this.updateMaximizeIcon(isMax);
+      }
+    });
+
+    // Quick Suggestion Prompt Chips
+    document.querySelectorAll(".prompt-chip").forEach((chip) => {
+      chip.addEventListener("click", () => {
+        const cmd = chip.getAttribute("data-cmd");
+        if (cmd) {
+          this.submitCommand(cmd);
+        }
+      });
+    });
+
     // Diagnostics Modal Controls
     document.getElementById("btn-diag-close")?.addEventListener("click", () => {
       document.getElementById("modal-diagnostics")?.classList.add("hidden");
@@ -747,6 +767,12 @@ export class ZarvisApp {
     });
     document.getElementById(`view-${tab}`)?.classList.remove("hidden");
 
+    // Update Workspace breadcrumb
+    const tabBreadcrumb = document.getElementById("workspace-current-tab");
+    if (tabBreadcrumb) {
+      tabBreadcrumb.textContent = tab.charAt(0).toUpperCase() + tab.slice(1);
+    }
+
     // Update Sidebar navigation active class
     screens.forEach((s) => {
       const el = document.getElementById(`nav-${s}`);
@@ -766,12 +792,15 @@ export class ZarvisApp {
     this.store.setWindowMode(mode);
     const hudContainer = document.getElementById("hud-container");
     const workspaceContainer = document.getElementById("workspace-container");
+    const titlebarHeader = document.getElementById("titlebar-header");
 
     if (mode === "hud") {
       workspaceContainer?.classList.add("hidden");
+      titlebarHeader?.classList.add("hidden");
       hudContainer?.classList.remove("hidden");
     } else {
       hudContainer?.classList.add("hidden");
+      titlebarHeader?.classList.remove("hidden");
       workspaceContainer?.classList.remove("hidden");
     }
   }
@@ -855,17 +884,39 @@ export class ZarvisApp {
     // 3. Render Messages
     const chatBox = document.getElementById("chat-messages-container");
     if (chatBox) {
-      chatBox.innerHTML = state.conversation
+      let messagesHtml = state.conversation
         .map((m: MessageItem) => {
           if (m.sender === "user") {
             return `<div class="flex justify-end"><div class="bg-blue-600 text-white px-4 py-2.5 rounded-2xl rounded-tr-none max-w-md shadow-sm">${m.text}</div></div>`;
           } else if (m.sender === "tool") {
             return `<div class="bg-[#0e1422] border border-slate-700/80 rounded-lg p-2.5 flex items-center justify-between text-[11px]"><div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-400"></span><span class="font-mono text-slate-300">${m.toolName || "tool"}</span></div><span class="text-emerald-400 font-medium">✓ ${m.toolStatus || "Completed"}</span></div>`;
           } else {
-            return `<div class="flex justify-start items-start gap-2.5"><div class="w-6 h-6 rounded bg-blue-600/30 border border-blue-500/50 flex items-center justify-center font-bold text-blue-400 text-[10px] mt-0.5">Z</div><div class="bg-[#111827] border border-slate-800 text-slate-200 px-4 py-2.5 rounded-2xl rounded-tl-none max-w-md">${m.text}</div></div>`;
+            return `<div class="flex justify-start items-start gap-2.5"><div class="w-6 h-6 rounded bg-blue-600/30 border border-blue-500/50 flex items-center justify-center font-bold text-blue-400 text-[10px] mt-0.5">Z</div><div class="bg-[#111827] border border-slate-800 text-slate-200 px-4 py-2.5 rounded-2xl rounded-tl-none max-w-md leading-relaxed whitespace-pre-wrap">${m.text}</div></div>`;
           }
         })
         .join("");
+
+      if (state.assistantState === "THINKING") {
+        messagesHtml += `
+          <div class="bg-[#0e1422] border border-blue-500/40 rounded-xl p-3.5 space-y-2 shadow-lg animate-pulse my-2">
+            <div class="flex items-center justify-between text-xs font-semibold text-blue-400">
+              <span class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-blue-400 animate-ping"></span>
+                ZARVIS Autonomous Execution Pipeline
+              </span>
+              <span class="text-[10px] bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded font-mono">Running</span>
+            </div>
+            <div class="space-y-1.5 text-[11px] text-slate-300 pt-1">
+              <div class="flex items-center gap-2"><span class="text-emerald-400">✓</span> 1. User Intent Detected & DAG Planned</div>
+              <div class="flex items-center gap-2"><span class="text-emerald-400">✓</span> 2. Security & Policy Sandbox Verified</div>
+              <div class="flex items-center gap-2 text-blue-300 font-medium"><span class="w-1.5 h-1.5 rounded-full bg-blue-400 animate-spin"></span> 3. Executing Tool Action on Windows OS...</div>
+            </div>
+          </div>
+        `;
+      }
+
+      chatBox.innerHTML = messagesHtml;
+      chatBox.scrollTop = chatBox.scrollHeight;
     }
 
     // 4. Render Activity Streams

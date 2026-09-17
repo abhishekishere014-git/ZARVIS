@@ -27,6 +27,22 @@
   user-select: none;
 }
 
+/* Frameless Window Drag & Interaction Regions */
+.drag-region {
+  -webkit-app-region: drag;
+}
+
+.no-drag,
+button,
+input,
+select,
+textarea,
+kbd,
+a,
+[role="button"] {
+  -webkit-app-region: no-drag;
+}
+
 body {
   background-color: var(--zarvis-bg);
   color: #E2E8F0;

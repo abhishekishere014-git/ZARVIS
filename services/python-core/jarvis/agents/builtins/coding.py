@@ -20,13 +20,35 @@ class CodingAgent(BaseAgent):
         definition = AgentDefinition(
             id="agent.coding",
             name="Coding Agent",
-            description="Coordinates implementation tasks and approved document generation tools.",
+            description="Coordinates implementation tasks and approved automation/generation tools.",
             capabilities={AgentCapability.CODING},
             allowed_tools={
                 "office.create_docx",
                 "office.create_xlsx",
                 "office.create_pptx",
                 "office.create_pdf",
+                "app.launch",
+                "app.focus",
+                "app.close",
+                "browser.open",
+                "browser.search",
+                "youtube.search_and_play",
+                "file.open_directory",
+                "file.list_files",
+                "file.create_text_file",
+                "os.window.list",
+                "os.window.focus",
+                "os.window.minimize",
+                "os.window.maximize",
+                "os.window.restore",
+                "os.window.close",
+                "os.screen.capture",
+                "os.screen.monitors",
+                "os.screen.info",
+                "os.clipboard.read",
+                "os.clipboard.write",
+                "os.clipboard.clear",
+                "os.system.info",
             },
             risk_level="medium",
             model_role="coding",
@@ -38,12 +60,18 @@ class CodingAgent(BaseAgent):
         required_tools = task.required_tools
         artifacts: List[str] = []
         observations: List[AgentObservation] = []
+        executed_messages: List[str] = []
 
-        # If task requires an approved Office generation tool, execute it via Phase 04 ToolExecutor
+        # If task requires an approved generation or automation tool, execute it via Phase 04 ToolExecutor
         if required_tools and context.tool_executor:
             for tool_id in required_tools:
                 if tool_id in self.definition.allowed_tools:
-                    tool_args = self._build_tool_arguments(tool_id, task)
+                    # Check if explicit tool_args were provided in task.input_data
+                    if task.input_data and "tool_args" in task.input_data:
+                        tool_args = task.input_data["tool_args"]
+                    else:
+                        tool_args = self._build_tool_arguments(tool_id, task)
+
                     request = ToolRequest(
                         tool_id=tool_id,
                         arguments=tool_args,
@@ -56,6 +84,13 @@ class CodingAgent(BaseAgent):
 
                     if tool_res.is_success:
                         artifacts.extend(tool_res.artifacts)
+                        if isinstance(tool_res.output, dict):
+                            msg = tool_res.output.get("message") or str(tool_res.output)
+                        elif isinstance(tool_res.output, str):
+                            msg = tool_res.output
+                        else:
+                            msg = f"Executed {tool_id} successfully."
+                        executed_messages.append(msg)
                     else:
                         return AgentStepResult(
                             task_id=task.id,
@@ -77,11 +112,12 @@ class CodingAgent(BaseAgent):
                     except Exception:
                         pass
 
+            output_summary = " ".join(executed_messages) if executed_messages else f"Successfully executed tools: {required_tools}"
             return AgentStepResult(
                 task_id=task.id,
                 agent_id=self.id,
                 status=TaskState.COMPLETED,
-                output=f"Successfully executed tools: {required_tools}",
+                output=output_summary,
                 artifacts=artifacts,
                 observations=observations,
                 evidence={"artifacts_count": len(artifacts)},

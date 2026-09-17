@@ -50,7 +50,7 @@ export class WindowManager {
       minWidth: 1024,
       minHeight: 640,
       backgroundColor: "#0B0F19",
-      frame: true,
+      frame: false,
       show: false,
       title: "ZARVIS",
       webPreferences: {

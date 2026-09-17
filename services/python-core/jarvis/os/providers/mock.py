@@ -169,6 +169,8 @@ class MockOSProvider(OSProvider):
             win.is_maximized = False
         elif action == WindowAction.FOCUS:
             self.set_foreground_window(handle_id)
+        elif action == WindowAction.CLOSE:
+            self.windows.pop(handle_id, None)
         return True
 
     def read_clipboard(self) -> str:

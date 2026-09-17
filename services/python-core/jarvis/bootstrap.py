@@ -68,10 +68,17 @@ def bootstrap_system(
         from jarvis.os.providers.mock import MockOSProvider
         os_provider = MockOSProvider()
 
+    from jarvis.os.manager import OSAutomationManager
+    from jarvis.os.tools.registration import register_os_tools
+    target_workspace = effective_settings.data_dir / "workspace"
+    target_workspace.mkdir(parents=True, exist_ok=True)
+    os_manager = OSAutomationManager(provider=os_provider, workspace_root=target_workspace, event_bus=target_engine.bus)
+    register_os_tools(tool_system.registry, os_manager=os_manager)
+
     from jarvis.os.screen.capture import ScreenCaptureManager
     screen_capture = ScreenCaptureManager(provider=os_provider)
     vision_manager = VisionManager(screen_capture=screen_capture, event_bus=target_engine.bus)
-    logger.info("Vision Subsystem initialized with ScreenCaptureManager.")
+    logger.info("Vision & OS Subsystems initialized with real providers.")
 
     # 5. Voice & Audio Pipeline (Phase 07)
     voice_pipeline = build_voice_pipeline(

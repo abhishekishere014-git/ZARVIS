@@ -12,6 +12,9 @@ class SecurityProfile(BaseModel):
         default_factory=lambda: {
             ToolPermission.READ,
             ToolPermission.WRITE,
+            ToolPermission.EXECUTE,
+            ToolPermission.NETWORK,
+            ToolPermission.SYSTEM,
         },
         description="Active permission set granted to the executor",
     )

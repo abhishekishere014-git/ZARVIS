@@ -109,6 +109,186 @@ class PlannerAgent(BaseAgent):
         """Produces a deterministic, verified multi-stage plan based on goal keywords."""
         lower_goal = goal.lower()
 
+        # 1. YouTube intent
+        if "youtube" in lower_goal or (lower_goal.startswith("play ") and ("song" in lower_goal or "music" in lower_goal or "video" in lower_goal)):
+            query = goal
+            for prefix in [
+                "open youtube and play",
+                "open youtube and search for",
+                "open youtube and search",
+                "search youtube for",
+                "play on youtube",
+                "open youtube",
+                "play",
+            ]:
+                if lower_goal.startswith(prefix):
+                    query = goal[len(prefix):].strip()
+                    break
+            if " on youtube" in query.lower():
+                idx = query.lower().index(" on youtube")
+                query = query[:idx].strip()
+            if not query or query.lower() in ("youtube", "video", "song"):
+                query = "lofi hip hop beats"
+
+            return [
+                AgentTask(
+                    id="task_youtube",
+                    title=f"YouTube: {query}",
+                    description=f"Search and open YouTube for query: {query}",
+                    assigned_agent="agent.coding",
+                    dependencies=[],
+                    required_tools=["youtube.search_and_play"],
+                    input_data={"tool_args": {"query": query}, "goal_prompt": goal},
+                ),
+                AgentTask(
+                    id="task_verify",
+                    title="Verify Browser Launch",
+                    description="Verify default browser process invocation",
+                    assigned_agent="agent.verifier",
+                    dependencies=["task_youtube"],
+                    input_data={"goal_prompt": goal},
+                ),
+            ]
+
+        # 2. Web Search intent
+        if any(lower_goal.startswith(p) for p in ["search the web for", "search web for", "search google for", "search for", "look up", "google"]):
+            query = goal
+            for prefix in ["search the web for", "search web for", "search google for", "search for", "look up", "google"]:
+                if lower_goal.startswith(prefix):
+                    query = goal[len(prefix):].strip()
+                    break
+            return [
+                AgentTask(
+                    id="task_search",
+                    title=f"Search Web: {query}",
+                    description=f"Search the web for: {query}",
+                    assigned_agent="agent.coding",
+                    dependencies=[],
+                    required_tools=["browser.search"],
+                    input_data={"tool_args": {"query": query}, "goal_prompt": goal},
+                ),
+                AgentTask(
+                    id="task_verify",
+                    title="Verify Search Launch",
+                    description="Verify default browser search launch",
+                    assigned_agent="agent.verifier",
+                    dependencies=["task_search"],
+                    input_data={"goal_prompt": goal},
+                ),
+            ]
+
+        # 3. Folder / Directory Open intent
+        if any(w in lower_goal for w in ["downloads", "documents", "desktop", "workspace"]) and any(w in lower_goal for w in ["open", "show", "explore", "folder", "directory"]):
+            folder = "downloads"
+            if "downloads" in lower_goal:
+                folder = "downloads"
+            elif "documents" in lower_goal:
+                folder = "documents"
+            elif "desktop" in lower_goal:
+                folder = "desktop"
+            elif "workspace" in lower_goal:
+                folder = "workspace"
+
+            return [
+                AgentTask(
+                    id="task_open_directory",
+                    title=f"Open {folder.capitalize()} Folder",
+                    description=f"Open {folder} in Windows File Explorer",
+                    assigned_agent="agent.coding",
+                    dependencies=[],
+                    required_tools=["file.open_directory"],
+                    input_data={"tool_args": {"directory_name": folder}, "goal_prompt": goal},
+                ),
+                AgentTask(
+                    id="task_verify",
+                    title="Verify Explorer Launch",
+                    description=f"Verify File Explorer launched for {folder}",
+                    assigned_agent="agent.verifier",
+                    dependencies=["task_open_directory"],
+                    input_data={"goal_prompt": goal},
+                ),
+            ]
+
+        # 4. App Launch intent
+        app_keywords = {
+            "calculator": "Calculator",
+            "calc": "Calculator",
+            "notepad": "Notepad",
+            "text editor": "Notepad",
+            "visual studio code": "VS Code",
+            "vs code": "VS Code",
+            "vscode": "VS Code",
+            "code": "VS Code",
+            "chrome": "Chrome",
+            "google chrome": "Chrome",
+            "edge": "Edge",
+            "settings": "Settings",
+            "file explorer": "File Explorer",
+            "explorer": "File Explorer",
+            "paint": "Paint",
+            "terminal": "PowerShell",
+            "powershell": "PowerShell",
+            "task manager": "Task Manager",
+        }
+        if any(lower_goal.startswith(p) for p in ["open ", "launch ", "start ", "run "]):
+            for kw, app_name in app_keywords.items():
+                if kw in lower_goal:
+                    return [
+                        AgentTask(
+                            id="task_launch_app",
+                            title=f"Launch {app_name}",
+                            description=f"Launch application: {app_name}",
+                            assigned_agent="agent.coding",
+                            dependencies=[],
+                            required_tools=["app.launch"],
+                            input_data={"tool_args": {"app_name": app_name}, "goal_prompt": goal},
+                        ),
+                        AgentTask(
+                            id="task_verify",
+                            title=f"Verify {app_name} Execution",
+                            description=f"Verify process state for {app_name}",
+                            assigned_agent="agent.verifier",
+                            dependencies=["task_launch_app"],
+                            input_data={"goal_prompt": goal},
+                        ),
+                    ]
+
+        # 5. Screenshot / Screen Capture intent
+        if any(w in lower_goal for w in ["screenshot", "capture screen", "scan screen", "take a screenshot"]):
+            return [
+                AgentTask(
+                    id="task_screen_capture",
+                    title="Screen Capture",
+                    description="Capture primary display screenshot",
+                    assigned_agent="agent.coding",
+                    dependencies=[],
+                    required_tools=["os.screen.capture"],
+                    input_data={"tool_args": {}, "goal_prompt": goal},
+                ),
+                AgentTask(
+                    id="task_verify",
+                    title="Verify Screen Capture",
+                    description="Verify screen capture image artifact",
+                    assigned_agent="agent.verifier",
+                    dependencies=["task_screen_capture"],
+                    input_data={"goal_prompt": goal},
+                ),
+            ]
+
+        # 6. Window Management intent
+        if "window" in lower_goal and ("list" in lower_goal or "show" in lower_goal):
+            return [
+                AgentTask(
+                    id="task_window_list",
+                    title="List Open Windows",
+                    description="Enumerate visible desktop application windows",
+                    assigned_agent="agent.coding",
+                    dependencies=[],
+                    required_tools=["os.window.list"],
+                    input_data={"tool_args": {}, "goal_prompt": goal},
+                ),
+            ]
+
         # Check for Office generation goals
         if "presentation" in lower_goal or "pptx" in lower_goal or "slide" in lower_goal:
             return [

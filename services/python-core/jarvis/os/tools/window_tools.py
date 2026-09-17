@@ -132,3 +132,24 @@ async def window_restore(
     mgr = _get_manager()
     success = mgr.window.set_state(handle_id, WindowAction.RESTORE)
     return {"restored": success, "handle_id": handle_id}
+
+
+@tool(
+    name="window_close",
+    tool_id="os.window.close",
+    description="Closes the specified desktop window.",
+    category="os",
+    version="1.0.0",
+    permissions={ToolPermission.EXECUTE},
+    risk_level=RiskLevel.LOW,
+    timeout_seconds=5.0,
+)
+async def window_close(
+    handle_id: int,
+    context: Optional[ToolExecutionContext] = None,
+) -> Dict[str, Any]:
+    """Closes window."""
+    mgr = _get_manager()
+    success = mgr.window.set_state(handle_id, WindowAction.CLOSE)
+    return {"closed": success, "handle_id": handle_id}
+

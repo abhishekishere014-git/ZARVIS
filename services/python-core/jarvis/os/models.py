@@ -58,6 +58,7 @@ class WindowAction(str, Enum):
     MINIMIZE = "MINIMIZE"
     MAXIMIZE = "MAXIMIZE"
     RESTORE = "RESTORE"
+    CLOSE = "CLOSE"
 
 
 class MonitorInfo(BaseModel):
