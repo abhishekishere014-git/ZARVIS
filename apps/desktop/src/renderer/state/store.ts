@@ -75,12 +75,12 @@ export class DesktopStore {
       transcription: "",
       speakingText: "",
       telemetry: {
-        core: "healthy",
-        gateway: "healthy",
-        ipc: "connected",
-        voice: "ready",
-        vision: "ready",
-        memory: "ready",
+        core: "offline",
+        gateway: "offline",
+        ipc: "disconnected",
+        voice: "unavailable",
+        vision: "unavailable",
+        memory: "unavailable",
       },
       conversation: [],
       agents: [

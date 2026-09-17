@@ -36,9 +36,10 @@ export class NodeGateway {
       new Logger("jarvis.gateway.ipc", config.logLevel)
     );
 
-    // Sync Python Core connectivity with health monitor
+    // Sync Python Core connectivity with health monitor and notify clients
     this.ipcClient.onStateChange((state) => {
       this.healthMonitor.setPythonCoreConnected(state === "CONNECTED");
+      this.broadcastSystemHealth().catch(() => {});
     });
 
     // Broadcast Python Core events to all active WebSocket clients
@@ -58,6 +59,59 @@ export class NodeGateway {
 
   public getHealth(): GatewayHealthReport {
     return this.healthMonitor.getReport();
+  }
+
+  public async broadcastSystemHealth(): Promise<void> {
+    const isCore = this.ipcClient.isConnected();
+    let healthPayload: Record<string, any> = {
+      gateway: "healthy",
+      ipc: isCore ? "connected" : "disconnected",
+      core: isCore ? "healthy" : "offline",
+      voice: isCore ? "ready" : "unavailable",
+      vision: isCore ? "ready" : "unavailable",
+      memory: isCore ? "ready" : "unavailable",
+      tools: isCore ? "ready" : "unavailable",
+      agent: isCore ? "ready" : "unavailable",
+    };
+
+    if (isCore) {
+      try {
+        const resp = await this.ipcClient.sendRequest(
+          {
+            id: `health_probe_${Date.now()}`,
+            type: "system.health",
+            version: PROTOCOL_VERSION,
+            timestamp: new Date().toISOString(),
+            payload: {},
+          },
+          2000
+        );
+        if (resp.success && resp.payload) {
+          healthPayload = {
+            ...resp.payload,
+            gateway: "healthy",
+            ipc: "connected",
+          };
+        }
+      } catch {
+        // use fallback healthPayload
+      }
+    }
+
+    const event = {
+      type: "system.health",
+      version: PROTOCOL_VERSION,
+      timestamp: new Date().toISOString(),
+      payload: healthPayload,
+    };
+    const msg = JSON.stringify(event);
+    for (const client of this.clients) {
+      if (client.readyState === WebSocket.OPEN) {
+        try {
+          client.send(msg);
+        } catch {}
+      }
+    }
   }
 
   public async start(): Promise<void> {
@@ -135,6 +189,7 @@ export class NodeGateway {
         this.logger.info(`Client connected from ${clientIp}`);
         this.clients.add(ws);
         this.healthMonitor.setActiveClientsCount(this.clients.size);
+        this.broadcastSystemHealth().catch(() => {});
 
         ws.on("message", (raw) => {
           this.handleClientMessage(ws, raw.toString());
@@ -252,11 +307,38 @@ export class NodeGateway {
         try {
           const timeoutMs = request.type === "agent.execute" ? 120000 : undefined;
           const response = await this.ipcClient.sendRequest(request, timeoutMs);
+          if (request.type === "system.health" && response.success && response.payload) {
+            response.payload.gateway = "healthy";
+            response.payload.ipc = "connected";
+          }
           ws.send(JSON.stringify(response));
           return;
         } catch (err) {
           this.logger.error("Error routing request over IPC", request.id, String(err));
         }
+      }
+
+      // Offline handling for system.health
+      if (request.type === "system.health") {
+        const offlineHealth: JarvisResponse = {
+          id: request.id,
+          type: request.type,
+          version: PROTOCOL_VERSION,
+          timestamp: new Date().toISOString(),
+          success: true,
+          payload: {
+            gateway: "healthy",
+            core: "offline",
+            ipc: "disconnected",
+            voice: "unavailable",
+            vision: "unavailable",
+            memory: "unavailable",
+            tools: "unavailable",
+            agent: "unavailable",
+          },
+        };
+        ws.send(JSON.stringify(offlineHealth));
+        return;
       }
 
       // Offline handling: do NOT fake agent/vision/tool execution when Python Core is offline
@@ -287,6 +369,7 @@ export class NodeGateway {
           acknowledged: true,
           status: "pong",
           message: "PONG! JARVIS Gateway is operational (Python Core offline).",
+          core_connected: false,
           details: request.payload,
         },
       };

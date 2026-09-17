@@ -47,7 +47,8 @@ class SubsystemRegistry:
         router.register_handler("tools.list", self.handle_tools_list)
         router.register_handler("tools.execute", self.handle_tools_execute)
         router.register_handler("memory.stats", self.handle_memory_stats)
-        logger.info("Registered subsystem IPC handlers: agent.execute, vision.scan, voice.interact, voice.transcribe, voice.stop, tools.list, tools.execute, memory.stats")
+        router.register_handler("system.health", self.handle_system_health)
+        logger.info("Registered subsystem IPC handlers: agent.execute, vision.scan, voice.interact, voice.transcribe, voice.stop, tools.list, tools.execute, memory.stats, system.health")
 
     async def handle_agent_execute(self, request: JarvisRequest) -> Dict[str, Any]:
         """Executes a user goal through the AgentOrchestrator."""
@@ -250,3 +251,62 @@ class SubsystemRegistry:
 
         stats = await self.memory_manager.get_statistics()
         return stats
+
+    async def handle_system_health(self, request: JarvisRequest) -> Dict[str, Any]:
+        """Probes real operational status of all registered subsystems."""
+        # 1. Memory check
+        memory_status = "unavailable"
+        memory_details: Dict[str, Any] = {}
+        if self.memory_manager:
+            try:
+                memory_details = await self.memory_manager.get_statistics()
+                memory_status = "ready"
+            except Exception as exc:
+                memory_status = f"degraded: {exc}"
+
+        # 2. Voice check
+        voice_status = "unavailable"
+        voice_details: Dict[str, Any] = {}
+        if self.voice_pipeline:
+            voice_status = "ready"
+            voice_details = {
+                "tts": getattr(getattr(self.voice_pipeline, "tts_provider", None), "name", "ready"),
+                "stt": getattr(getattr(self.voice_pipeline, "stt_router", None), "name", "ready"),
+            }
+
+        # 3. Vision check
+        vision_status = "unavailable"
+        vision_details: Dict[str, Any] = {}
+        if self.vision_manager:
+            vision_status = "ready"
+            vision_details = {"active": True}
+
+        # 4. Tools check
+        tools_status = "unavailable"
+        tool_count = 0
+        if self.tool_system:
+            try:
+                tools = self.tool_system.registry.list(enabled_only=True)
+                tools_status = "ready"
+                tool_count = len(tools)
+            except Exception:
+                tools_status = "degraded"
+
+        # 5. Agent check
+        agent_status = "unavailable"
+        if self.agent_orchestrator:
+            agent_status = "ready"
+
+        return {
+            "core": "healthy",
+            "memory": memory_status,
+            "memory_details": memory_details,
+            "voice": voice_status,
+            "voice_details": voice_details,
+            "vision": vision_status,
+            "vision_details": vision_details,
+            "tools": tools_status,
+            "tools_count": tool_count,
+            "agent": agent_status,
+            "timestamp": time.time(),
+        }

@@ -263,6 +263,10 @@ export class ZarvisApp {
     window.zarvis.system.onRuntimeError?.((errInfo) => {
       this.showDiagnosticsModal(errInfo);
     });
+
+    window.zarvis.system.onSupervisorReady?.(() => {
+      this.refreshSystemHealth();
+    });
   }
 
   public handlePauseToggle(isPaused: boolean): void {
@@ -331,14 +335,20 @@ export class ZarvisApp {
   private setupGatewayListeners(): void {
     this.gateway.onStateChange((connected) => {
       if (connected) {
-        this.store.setAssistantState("IDLE");
         this.store.setTelemetry({ gateway: "healthy" });
         this.refreshSystemHealth();
       } else {
         this.stopSpeakingPlaybackOnly();
         this.stopListening();
         this.store.setAssistantState("OFFLINE");
-        this.store.setTelemetry({ gateway: "offline", ipc: "disconnected", core: "offline" });
+        this.store.setTelemetry({
+          gateway: "offline",
+          ipc: "disconnected",
+          core: "offline",
+          voice: "unavailable",
+          vision: "unavailable",
+          memory: "unavailable",
+        });
       }
     });
 
@@ -346,52 +356,81 @@ export class ZarvisApp {
       try {
         if (!event || typeof event.type !== "string") return;
         const payload = (event.payload as Record<string, any>) || {};
-      if (event.type === "agent.planning") {
-        this.store.addActivity({
-          id: `act_${Date.now()}`,
-          title: "Agent Planner",
-          category: "agent",
-          description: "Decomposing goal and generating execution DAG...",
-          timestamp: new Date().toLocaleTimeString(),
-        });
-        this.store.updateAgent("Planner", { status: "working" });
-      }
 
-      if (event.type === "agent.task.started") {
-        const agentName = String(payload.agent_id || "Agent");
-        this.store.updateAgent(agentName, { status: "working" });
-        this.store.addActivity({
-          id: `act_${Date.now()}`,
-          title: `Task Started: ${String(payload.task_id || "")}`,
-          category: "agent",
-          description: `Delegated to ${agentName}`,
-          timestamp: new Date().toLocaleTimeString(),
-        });
-      }
+        if (event.type === "system.health") {
+          this.store.setTelemetry({
+            gateway: payload.gateway ?? "healthy",
+            core: payload.core ?? "offline",
+            ipc: payload.ipc ?? "disconnected",
+            voice: payload.voice ?? "unavailable",
+            vision: payload.vision ?? "unavailable",
+            memory: payload.memory ?? "unavailable",
+          });
+          if (payload.core === "healthy") {
+            if (this.store.getState().assistantState === "OFFLINE") {
+              this.store.setAssistantState("IDLE");
+            }
+          } else {
+            this.store.setAssistantState("OFFLINE");
+          }
+          return;
+        }
 
-      if (event.type.startsWith("agent.") && event.type !== "agent.planning" && event.type !== "agent.task.started") {
-        const agentName = String(payload.agent || payload.agent_id || "Planner");
-        this.store.updateAgent(agentName, {
-          status: payload.status === "completed" ? "complete" : "working",
-        });
-      }
-
-      if (event.type === "tool.executed") {
-        this.store.addActivity({
-          id: `act_${Date.now()}`,
-          title: `Tool Executed: ${String(payload.tool || "tool")}`,
-          category: "tool",
-          description: String(payload.output || "Execution completed"),
-          timestamp: new Date().toLocaleTimeString(),
-        });
-      }
-
-        if (event.type === "agent.completed") {
+        if (event.type === "agent.planning") {
           this.store.addActivity({
             id: `act_${Date.now()}`,
-            title: "Agent Workflow Complete",
+            title: "Agent Planner",
             category: "agent",
-            description: "All task waves verified and synthesized.",
+            description: "Decomposing goal and generating execution DAG...",
+            timestamp: new Date().toLocaleTimeString(),
+          });
+          this.store.updateAgent("Planner", { status: "working" });
+        }
+
+        if (event.type === "agent.task.started") {
+          const agentName = String(payload.agent_id || "Agent");
+          this.store.updateAgent(agentName, { status: "working" });
+          this.store.addActivity({
+            id: `act_${Date.now()}`,
+            title: `Task Started: ${String(payload.task_id || "")}`,
+            category: "agent",
+            description: `Delegated to ${agentName}`,
+            timestamp: new Date().toLocaleTimeString(),
+          });
+        }
+
+        if (
+          event.type.startsWith("agent.") &&
+          event.type !== "agent.planning" &&
+          event.type !== "agent.task.started" &&
+          event.type !== "agent.completed" &&
+          event.type !== "agent.failed"
+        ) {
+          const agentName = String(payload.agent || payload.agent_id || "Planner");
+          this.store.updateAgent(agentName, {
+            status: payload.status === "completed" ? "complete" : "working",
+          });
+        }
+
+        if (event.type === "tool.executed") {
+          this.store.addActivity({
+            id: `act_${Date.now()}`,
+            title: `Tool Executed: ${String(payload.tool || "tool")}`,
+            category: "tool",
+            description: String(payload.output || "Execution completed"),
+            timestamp: new Date().toLocaleTimeString(),
+          });
+        }
+
+        if (event.type === "agent.completed" || event.type === "agent.failed") {
+          const isSuccess = event.type === "agent.completed" && (payload.status === "completed" || payload.status === undefined);
+          this.store.addActivity({
+            id: `act_${Date.now()}`,
+            title: isSuccess ? "Agent Workflow Complete" : "Agent Workflow Failed",
+            category: "agent",
+            description: isSuccess
+              ? (payload.summary ? String(payload.summary).slice(0, 100) : "All task waves verified and synthesized.")
+              : (payload.error || payload.summary || "Agent execution failed."),
             timestamp: new Date().toLocaleTimeString(),
           });
         }
@@ -641,19 +680,20 @@ export class ZarvisApp {
 
       if (resp.success && resp.payload) {
         const payload = resp.payload as Record<string, any>;
-        const summary = payload.summary || `Goal completed successfully.`;
+        const isSuccess = payload.status === "completed" || payload.status === undefined;
+        const summary = payload.summary || (isSuccess ? `Goal completed successfully.` : `Goal execution failed.`);
         const stats = payload.task_statistics ? ` (${payload.task_statistics.completed ?? 0}/${payload.task_statistics.total ?? 0} tasks)` : "";
 
         this.store.addMessage({
           id: `msg_a_${Date.now()}`,
           sender: "assistant",
-          text: summary + stats,
+          text: (isSuccess ? summary : `Task failed: ${summary}`) + stats,
           timestamp: new Date().toLocaleTimeString(),
         });
 
         this.store.addActivity({
           id: `act_${Date.now()}`,
-          title: "Task Completed",
+          title: isSuccess ? "Task Completed" : "Task Failed",
           category: "agent",
           description: `Run ID: ${payload.run_id || "done"}. ${summary.slice(0, 80)}`,
           timestamp: new Date().toLocaleTimeString(),
@@ -668,18 +708,33 @@ export class ZarvisApp {
           text: `Task failed: ${errMsg}`,
           timestamp: new Date().toLocaleTimeString(),
         });
+        this.store.addActivity({
+          id: `act_err_${Date.now()}`,
+          title: "Task Failed",
+          category: "agent",
+          description: errMsg.slice(0, 80),
+          timestamp: new Date().toLocaleTimeString(),
+        });
         this.store.setAssistantState("IDLE");
         window.zarvis?.notifications.show("Task Interrupted", errMsg, "warning");
       }
     } catch (err: any) {
+      const errMsg = err.message || "Unknown error";
       this.store.addMessage({
         id: `msg_err_${Date.now()}`,
         sender: "assistant",
-        text: `Failed to process command: ${err.message || "Unknown error"}`,
+        text: `Failed to process command: ${errMsg}`,
+        timestamp: new Date().toLocaleTimeString(),
+      });
+      this.store.addActivity({
+        id: `act_err_${Date.now()}`,
+        title: "Task Failed",
+        category: "agent",
+        description: errMsg.slice(0, 80),
         timestamp: new Date().toLocaleTimeString(),
       });
       this.store.setAssistantState("IDLE");
-      window.zarvis?.notifications.show("Task Error", err.message || "Unknown error", "error");
+      window.zarvis?.notifications.show("Task Error", errMsg, "error");
     }
   }
 
@@ -708,23 +763,17 @@ export class ZarvisApp {
           id: `act_vis_res_${Date.now()}`,
           title: "Screen Analysis Complete",
           category: "vision",
-          description: `Active: "${windowTitle}" | ${res.width}x${res.height} | ${elementsCount} elements mapped (${interactiveCount} interactive)`,
+          description: `Identified ${elementsCount} UI elements (${interactiveCount} interactive) on "${windowTitle}" [${res.width}x${res.height}]`,
           timestamp: new Date().toLocaleTimeString(),
         });
 
         this.store.addMessage({
           id: `msg_vis_${Date.now()}`,
           sender: "assistant",
-          text: `Screen visual analysis complete (${res.width}x${res.height}). Active window: "${windowTitle}". Identified ${elementsCount} UI elements with ${interactiveCount} actionable interactive targets mapped.`,
+          text: `Screen visual analysis complete for **${windowTitle}** (${res.width}x${res.height}). Detected ${elementsCount} UI elements with ${interactiveCount} actionable interaction targets.`,
           timestamp: new Date().toLocaleTimeString(),
         });
-
         this.store.setAssistantState("IDLE");
-        window.zarvis?.notifications.show(
-          "Screen Grounding",
-          `Mapped ${interactiveCount} interactive elements on ${res.width}x${res.height} display.`,
-          "success"
-        );
       } else {
         this.store.setAssistantState("IDLE");
         window.zarvis?.notifications.show(
@@ -740,22 +789,42 @@ export class ZarvisApp {
 
   public async refreshSystemHealth(): Promise<void> {
     try {
-      const resp = await this.gateway.sendRequest("system.ping");
-      if (resp.success) {
+      const resp = await this.gateway.sendRequest("system.health");
+      if (resp.success && resp.payload) {
+        const payload = resp.payload as Record<string, any>;
+        this.store.setTelemetry({
+          gateway: payload.gateway ?? "healthy",
+          core: payload.core ?? "offline",
+          ipc: payload.ipc ?? "disconnected",
+          voice: payload.voice ?? "unavailable",
+          vision: payload.vision ?? "unavailable",
+          memory: payload.memory ?? "unavailable",
+        });
+        if (payload.core === "healthy") {
+          if (this.store.getState().assistantState === "OFFLINE") {
+            this.store.setAssistantState("IDLE");
+          }
+        } else {
+          this.store.setAssistantState("OFFLINE");
+        }
+      } else {
         this.store.setTelemetry({
           gateway: "healthy",
-          core: "healthy",
-          ipc: "connected",
-          voice: "ready",
-          vision: "ready",
-          memory: "ready",
+          core: "offline",
+          ipc: "disconnected",
+          voice: "unavailable",
+          vision: "unavailable",
+          memory: "unavailable",
         });
       }
     } catch {
       this.store.setTelemetry({
-        gateway: "degraded",
+        gateway: "offline",
         core: "offline",
         ipc: "disconnected",
+        voice: "unavailable",
+        vision: "unavailable",
+        memory: "unavailable",
       });
     }
   }

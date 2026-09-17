@@ -235,19 +235,27 @@ if (!gotTheLock) {
       });
     }
 
-    // 7. Start background services asynchronously in parallel (non-blocking)
+    // 7. Start background services sequentially: Python Core FIRST, then Node Gateway
     (async () => {
       try {
-        const starts: Promise<any>[] = [];
         if (pyRuntime.exists) {
-          starts.push(supervisor.startService(pythonCoreConfig));
+          const pyStatus = await supervisor.startService(pythonCoreConfig);
+          console.log(`[Supervisor] Python Core initialized: state=${pyStatus.state}, port=${pyStatus.port}`);
         }
         if (nodeRuntime.exists) {
-          starts.push(supervisor.startService(nodeGatewayConfig));
+          const gwStatus = await supervisor.startService(nodeGatewayConfig);
+          console.log(`[Supervisor] Node Gateway initialized: state=${gwStatus.state}, port=${gwStatus.port}`);
         }
-        await Promise.all(starts);
+
+        const win = windowManager.getMainWindow();
+        if (win && !win.isDestroyed()) {
+          win.webContents.send("zarvis:system:supervisorReady", {
+            python: supervisor.getStatus("python-core", 8765),
+            gateway: supervisor.getStatus("node-gateway", 3000),
+          });
+        }
       } catch (err) {
-        console.warn("Service auto-start warning:", err);
+        console.warn("Service sequential start warning:", err);
       }
     })();
   });

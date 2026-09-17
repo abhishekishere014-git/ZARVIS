@@ -66,8 +66,9 @@ Thumbs.db
 storage/
 data/
 workspace/
-release/
-build-resources/
+# Electron Builder & Packaging
+apps/desktop/release/
+apps/desktop/build-resources/
 .zarvis/
 .pytest_temp/
 .pytest_tmp/

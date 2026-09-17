@@ -74,6 +74,11 @@ const api: ZarvisBridgeApi = {
       ipcRenderer.on("zarvis:system:runtimeError", listener);
       return () => ipcRenderer.removeListener("zarvis:system:runtimeError", listener);
     },
+    onSupervisorReady: (callback) => {
+      const listener = (_: any, status: any) => callback(status);
+      ipcRenderer.on("zarvis:system:supervisorReady", listener);
+      return () => ipcRenderer.removeListener("zarvis:system:supervisorReady", listener);
+    },
   },
 };
 

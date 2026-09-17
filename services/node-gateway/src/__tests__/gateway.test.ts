@@ -73,7 +73,33 @@ describe("Node Gateway Lifecycle & Protocol Handling", () => {
     assert.equal(invalidResponse.success, false);
     assert.equal(invalidResponse.error?.code, "INVALID_PROTOCOL_MESSAGE");
 
-    // 4. Close client and stop gateway
+    // 4. Test system.health request when Python Core is offline
+    const healthPromise = new Promise<JarvisResponse>((resolve) => {
+      const handler = (data: any) => {
+        const parsed = JSON.parse(data.toString());
+        if (parsed.id === "test-health-req") {
+          ws.removeListener("message", handler);
+          resolve(parsed);
+        }
+      };
+      ws.on("message", handler);
+    });
+
+    ws.send(JSON.stringify({
+      id: "test-health-req",
+      type: "system.health",
+      version: PROTOCOL_VERSION,
+      timestamp: new Date().toISOString(),
+      payload: {},
+    }));
+    const healthResp = await healthPromise;
+    assert.equal(healthResp.success, true);
+    assert.equal(healthResp.payload?.core, "offline");
+    assert.equal(healthResp.payload?.gateway, "healthy");
+    assert.equal(healthResp.payload?.ipc, "disconnected");
+    assert.equal(healthResp.payload?.voice, "unavailable");
+
+    // 5. Close client and stop gateway
     ws.close();
     await gateway.stop();
   });

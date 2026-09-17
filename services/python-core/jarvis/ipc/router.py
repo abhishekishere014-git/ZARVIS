@@ -42,12 +42,24 @@ class IPCRouter:
     def _register_default_handlers(self) -> None:
         """Register core system handlers."""
         self.register_handler("system.ping", self._handle_ping)
+        self.register_handler("system.health", self._handle_health)
 
     async def _handle_ping(self, request: JarvisRequest) -> Dict[str, Any]:
         return {
             "status": "pong",
             "server": "python-core",
             "protocol": PROTOCOL_VERSION,
+            "server_time": time.time(),
+        }
+
+    async def _handle_health(self, request: JarvisRequest) -> Dict[str, Any]:
+        return {
+            "core": "healthy",
+            "memory": "unavailable",
+            "voice": "unavailable",
+            "vision": "unavailable",
+            "tools": "unavailable",
+            "agent": "unavailable",
             "server_time": time.time(),
         }
 

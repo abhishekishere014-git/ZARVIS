@@ -40,6 +40,7 @@ export interface ZarvisSystemBridgeApi {
   onNavigateTab?: (callback: (tab: string) => void) => () => void;
   onPauseToggle?: (callback: (isPaused: boolean) => void) => () => void;
   onRuntimeError?: (callback: (errorInfo: { errors: string[]; diagnostics: any }) => void) => () => void;
+  onSupervisorReady?: (callback: (status: any) => void) => () => void;
 }
 
 export interface ZarvisBridgeApi {

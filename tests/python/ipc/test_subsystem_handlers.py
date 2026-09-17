@@ -197,3 +197,42 @@ async def test_voice_stop(empty_registry):
     assert res.payload["stopped"] is True
     assert res.payload["status"] == "idle"
 
+
+@pytest.mark.asyncio
+async def test_system_health_empty_registry(empty_registry):
+    router = IPCRouter()
+    empty_registry.register_handlers(router)
+    req = JarvisRequest(
+        id="req_health_1",
+        type="system.health",
+        version=PROTOCOL_VERSION,
+        timestamp="2026-09-15T00:00:00Z",
+        payload={},
+    )
+    res = await router.dispatch(req)
+    assert res.success is True
+    assert res.payload["core"] == "healthy"
+    assert res.payload["memory"] == "unavailable"
+    assert res.payload["voice"] == "unavailable"
+    assert res.payload["vision"] == "unavailable"
+    assert res.payload["tools"] == "unavailable"
+    assert res.payload["agent"] == "unavailable"
+
+
+@pytest.mark.asyncio
+async def test_system_health_populated_router(populated_router):
+    router, _, _ = populated_router
+    req = JarvisRequest(
+        id="req_health_2",
+        type="system.health",
+        version=PROTOCOL_VERSION,
+        timestamp="2026-09-15T00:00:00Z",
+        payload={},
+    )
+    res = await router.dispatch(req)
+    assert res.success is True
+    assert res.payload["core"] == "healthy"
+    assert res.payload["agent"] == "ready"
+    assert res.payload["vision"] == "ready"
+
+

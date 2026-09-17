@@ -30,9 +30,17 @@ describe("Desktop Window Lifecycle & Mode Switching", () => {
   it("should maintain real telemetry status across lifecycle transitions", () => {
     const store = new DesktopStore();
     const tel = store.getState().telemetry;
-    assert.equal(tel.core, "healthy");
-    assert.equal(tel.gateway, "healthy");
-    assert.equal(tel.ipc, "connected");
+    assert.equal(tel.core, "offline");
+    assert.equal(tel.gateway, "offline");
+    assert.equal(tel.ipc, "disconnected");
+
+    store.setTelemetry({ core: "healthy", gateway: "healthy", ipc: "connected" });
+    assert.equal(store.getState().telemetry.core, "healthy");
+    assert.equal(store.getState().telemetry.gateway, "healthy");
+    assert.equal(store.getState().telemetry.ipc, "connected");
+
+    store.setWindowMode("hud");
+    assert.equal(store.getState().telemetry.core, "healthy");
 
     store.setTelemetry({ gateway: "degraded", ipc: "disconnected" });
     assert.equal(store.getState().telemetry.gateway, "degraded");
